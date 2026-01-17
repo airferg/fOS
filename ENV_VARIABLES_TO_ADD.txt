@@ -1,0 +1,62 @@
+# Copy these variables to your .env.local file
+# Add them to your existing .env.local file to enable all 33 integrations
+
+# ============================================
+# BATCH 1: Communication & Collaboration
+# ============================================
+OUTLOOK_CLIENT_ID=your_outlook_client_id
+OUTLOOK_CLIENT_SECRET=your_outlook_client_secret
+SLACK_CLIENT_ID=your_slack_client_id
+SLACK_CLIENT_SECRET=your_slack_client_secret
+DISCORD_CLIENT_ID=your_discord_client_id
+DISCORD_CLIENT_SECRET=your_discord_client_secret
+ZOOM_CLIENT_ID=your_zoom_client_id
+ZOOM_CLIENT_SECRET=your_zoom_client_secret
+CALENDLY_CLIENT_ID=your_calendly_client_id
+CALENDLY_CLIENT_SECRET=your_calendly_client_secret
+
+# ============================================
+# BATCH 2: Document & Project Management
+# ============================================
+NOTION_CLIENT_ID=your_notion_client_id
+NOTION_CLIENT_SECRET=your_notion_client_secret
+TYPEFORM_CLIENT_ID=your_typeform_client_id
+TYPEFORM_CLIENT_SECRET=your_typeform_client_secret
+JIRA_CLIENT_ID=your_jira_client_id
+JIRA_CLIENT_SECRET=your_jira_client_secret
+
+# ============================================
+# BATCH 3: Development & Social
+# ============================================
+ASANA_CLIENT_ID=your_asana_client_id
+ASANA_CLIENT_SECRET=your_asana_client_secret
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+GITHUB_WEBHOOK_SECRET=your_github_webhook_secret
+GITLAB_CLIENT_ID=your_gitlab_client_id
+GITLAB_CLIENT_SECRET=your_gitlab_client_secret
+VERCEL_CLIENT_ID=your_vercel_client_id
+VERCEL_CLIENT_SECRET=your_vercel_client_secret
+LINKEDIN_CLIENT_ID=your_linkedin_client_id
+LINKEDIN_CLIENT_SECRET=your_linkedin_client_secret
+TWITTER_CLIENT_ID=your_twitter_client_id
+TWITTER_CLIENT_SECRET=your_twitter_client_secret
+
+# ============================================
+# BATCH 4: Analytics & Payments
+# ============================================
+STRIPE_CLIENT_ID=your_stripe_client_id
+STRIPE_SECRET_KEY=sk_live_xxx...
+STRIPE_WEBHOOK_SECRET=whsec_xxx...
+QUICKBOOKS_CLIENT_ID=your_quickbooks_client_id
+QUICKBOOKS_CLIENT_SECRET=your_quickbooks_client_secret
+INTERCOM_CLIENT_ID=your_intercom_client_id
+INTERCOM_CLIENT_SECRET=your_intercom_client_secret
+ZENDESK_CLIENT_ID=your_zendesk_client_id
+ZENDESK_CLIENT_SECRET=your_zendesk_client_secret
+ZENDESK_SUBDOMAIN=yourcompany
+MAILCHIMP_CLIENT_ID=your_mailchimp_client_id
+MAILCHIMP_CLIENT_SECRET=your_mailchimp_client_secret
+HUBSPOT_CLIENT_ID=your_hubspot_client_id
+HUBSPOT_CLIENT_SECRET=your_hubspot_client_secret
+
