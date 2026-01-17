@@ -6,8 +6,9 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
  * POST /api/groups/[id]/contacts
  * Body: { contactIds: string[] }
  */
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const supabase = await createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const { data: group, error: groupError } = await supabase
       .from('contact_groups')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single()
 
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // Insert memberships (ignore conflicts for existing memberships)
     const memberships = contactIds.map(contactId => ({
       contact_id: contactId,
-      group_id: params.id,
+      group_id: id,
     }))
 
     const { error: insertError } = await supabase
@@ -74,8 +75,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
  * DELETE /api/groups/[id]/contacts
  * Body: { contactIds: string[] }
  */
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params
     const supabase = await createServerSupabaseClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -87,7 +89,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const { data: group, error: groupError } = await supabase
       .from('contact_groups')
       .select('id')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single()
 
@@ -104,7 +106,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const { error } = await supabase
       .from('contact_group_members')
       .delete()
-      .eq('group_id', params.id)
+      .eq('group_id', id)
       .in('contact_id', contactIds)
 
     if (error) {
