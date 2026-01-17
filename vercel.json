@@ -1,13 +1,4 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/proactive-check",
-      "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/integrations/monitor",
-      "schedule": "*/15 * * * *"
-    }
-  ]
+  "crons": []
 }
 
