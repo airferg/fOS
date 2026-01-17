@@ -179,14 +179,21 @@ Break down this task and execute it using the available tools. Use function call
           const toolResults = []
 
           for (const toolCall of message.tool_calls) {
-            const tool = toolRegistry.getTool(toolCall.function.name)
+            // Type guard: check if toolCall has function property
+            if (!('function' in toolCall) || !toolCall.function) {
+              console.error('[Task Executor] Invalid tool call format:', toolCall)
+              continue
+            }
+
+            const functionName = toolCall.function.name
+            const tool = toolRegistry.getTool(functionName)
             
             if (!tool) {
               toolResults.push({
                 tool_call_id: toolCall.id,
                 role: 'tool',
-                name: toolCall.function.name,
-                content: JSON.stringify({ error: `Tool "${toolCall.function.name}" not found` })
+                name: functionName,
+                content: JSON.stringify({ error: `Tool "${functionName}" not found` })
               })
               continue
             }
@@ -198,20 +205,20 @@ Break down this task and execute it using the available tools. Use function call
               
               const result = await tool.execute(params, userId)
               
-              toolsUsed.push(toolCall.function.name)
+              toolsUsed.push(functionName)
               actions.push({
-                tool: toolCall.function.name,
+                tool: functionName,
                 result
               })
 
               toolResults.push({
                 tool_call_id: toolCall.id,
                 role: 'tool',
-                name: toolCall.function.name,
+                name: functionName,
                 content: JSON.stringify(result)
               })
             } catch (error: any) {
-              console.error(`[Task Executor] Tool error: ${toolCall.function.name}`, error)
+              console.error(`[Task Executor] Tool error: ${functionName}`, error)
               
               // If tool returns an error object (not thrown), include it
               const errorContent = error.connected === false 
@@ -224,7 +231,7 @@ Break down this task and execute it using the available tools. Use function call
               toolResults.push({
                 tool_call_id: toolCall.id,
                 role: 'tool',
-                name: toolCall.function.name,
+                name: functionName,
                 content: errorContent
               })
             }
