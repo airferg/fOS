@@ -41,8 +41,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'CSV file is empty or invalid' }, { status: 400 })
     }
 
+    // Find the header row (skip note lines at the top)
+    // LinkedIn CSV exports often have notes before the header
+    let headerRowIndex = 0
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      // Check if this line looks like a header (contains common LinkedIn CSV headers)
+      if (line.includes('First Name') && line.includes('Last Name')) {
+        headerRowIndex = i
+        break
+      }
+    }
+
     // Parse header to determine CSV format
-    const header = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
+    const header = parseCSVLine(lines[headerRowIndex]).map(h => h.trim().replace(/^"|"$/g, ''))
 
     // Check if this is a LinkedIn export (has specific columns)
     const isLinkedInCSV = header.includes('First Name') && header.includes('Last Name')
@@ -55,12 +67,19 @@ export async function POST(req: NextRequest) {
       // Parse LinkedIn CSV format
       const csvData: LinkedInCSVRow[] = []
 
-      for (let i = 1; i < lines.length; i++) {
+      // Start parsing from the line after the header
+      for (let i = headerRowIndex + 1; i < lines.length; i++) {
         const values = parseCSVLine(lines[i])
+        
+        // Skip empty rows
+        if (values.every(v => !v || !v.trim())) {
+          continue
+        }
+
         const row: any = {}
 
         header.forEach((key, index) => {
-          row[key] = values[index] || ''
+          row[key] = values[index]?.trim() || ''
         })
 
         csvData.push(row as LinkedInCSVRow)

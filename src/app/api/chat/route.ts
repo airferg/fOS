@@ -104,16 +104,42 @@ Budget: $${userProfile?.funds_available || 0}${mentionedContactsContext}
     // Generate response with context
     const systemPrompt = `You are FounderOS, an AI operating system for startup founders. ${context}
 Help the user take action on their startup using what they have right now (Bird in Hand principle).
-Be encouraging, practical, and suggest specific next steps. Keep responses SHORT - maximum 2-3 sentences. Get straight to the point.`
+Be encouraging, practical, and suggest specific next steps. Keep responses SHORT - maximum 2-3 sentences. Get straight to the point.
+
+IMPORTANT: If the user asks you to DO something (not just discuss it), suggest an action that can be executed by the dynamic TaskExecutorAgent. The agent can handle any task dynamically using available tools and integrations.`
 
     const response = await generateResponse(messages, systemPrompt)
 
-    // Analyze if we should suggest actions
-    const actions = await analyzeForActions(messages[messages.length - 1]?.content, {
-      goal: userProfile?.current_goal || '',
-      contacts: contacts || [],
-      skills: skills || [],
-    })
+    // Analyze if we should suggest actions - updated to use dynamic TaskExecutorAgent
+    const lastMessage = messages[messages.length - 1]?.content || ''
+    const actions = []
+    
+    // Check if user wants to DO something (execute a task)
+    const actionKeywords = ['send', 'create', 'schedule', 'book', 'draft', 'email', 'call', 'meeting', 'update', 'add', 'generate', 'write', 'check', 'find', 'lookup', 'remind']
+    const isActionRequest = actionKeywords.some(keyword => lastMessage.toLowerCase().includes(keyword))
+    
+    if (isActionRequest) {
+      // Suggest dynamic agent action using TaskExecutorAgent
+      actions.push({
+        type: 'agent_id',
+        title: 'Execute task',
+        details: `I can handle this using available tools and integrations. Click to execute.`,
+        data: {
+          agentId: 'task-executor',
+          input: {
+            task: lastMessage
+          }
+        }
+      })
+    } else {
+      // Fallback to legacy actions for backwards compatibility
+      const legacyActions = await analyzeForActions(lastMessage, {
+        goal: userProfile?.current_goal || '',
+        contacts: contacts || [],
+        skills: skills || [],
+      })
+      actions.push(...legacyActions)
+    }
 
     // Log the interaction
     await supabase

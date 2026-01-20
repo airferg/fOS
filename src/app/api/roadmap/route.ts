@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { title, description, due_date, status = 'todo', priority = 0, related_idea_id } = await req.json()
+    const { title, description, due_date, status = 'todo', priority = 0, related_idea_id, function_context } = await req.json()
 
     const { data, error } = await supabase
       .from('roadmap_items')
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
         status,
         priority,
         related_idea_id,
+        function_context: function_context || null,
       })
       .select()
       .single()

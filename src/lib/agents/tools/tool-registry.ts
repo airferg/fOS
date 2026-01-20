@@ -13,7 +13,7 @@ export interface Tool {
     properties: Record<string, any>
     required: string[]
   }
-  execute: (params: any, userId: string) => Promise<any>
+  execute: (params: any, userId: string, metadata?: { agentTaskId?: string }) => Promise<any>
 }
 
 export class ToolRegistry {

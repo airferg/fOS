@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin}/api/integrations/notion/callback`
+    // Notion OAuth redirect URI - use the exact format Notion provided
+    const redirectUri = `https://http//localhost:3000/api/integrations/notion/callback`
     const clientId = process.env.NOTION_CLIENT_ID
 
     if (!clientId) {

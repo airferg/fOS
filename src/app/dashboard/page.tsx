@@ -4,6 +4,10 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import ApprovalModal from '@/components/ApprovalModal'
+import IntegrationActivityFeed from '@/components/IntegrationActivityFeed'
+import ThemeToggle from '@/components/ThemeToggle'
+import EditNorthStarModal from '@/components/EditNorthStarModal'
 
 interface Message {
   role: 'assistant' | 'user'
@@ -53,18 +57,47 @@ interface AgentTask {
   completed_at?: string
 }
 
+// Function badge utility
+const getFunctionBadge = (functionContext?: string) => {
+  if (!functionContext) return null
+  
+  const configs: Record<string, { label: string; bg: string; text: string }> = {
+    product: { label: 'Product', bg: 'bg-blue-100', text: 'text-blue-700' },
+    marketing: { label: 'Marketing', bg: 'bg-purple-100', text: 'text-purple-700' },
+    finance: { label: 'Finance', bg: 'bg-green-100', text: 'text-green-700' },
+    sales: { label: 'Sales', bg: 'bg-orange-100', text: 'text-orange-700' },
+    operations: { label: 'Ops', bg: 'bg-zinc-100', text: 'text-zinc-700' },
+    legal: { label: 'Legal', bg: 'bg-red-100', text: 'text-red-700' },
+    team: { label: 'Team', bg: 'bg-cyan-100', text: 'text-cyan-700' },
+    analytics: { label: 'Analytics', bg: 'bg-indigo-100', text: 'text-indigo-700' },
+  }
+  
+  const config = configs[functionContext]
+  if (!config) return null
+  
+  return (
+    <span className={`px-1.5 py-0.5 text-[9px] font-medium rounded ${config.bg} ${config.text}`}>
+      {config.label}
+    </span>
+  )
+}
+
 export default function DashboardPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [roadmap, setRoadmap] = useState<RoadmapItem[]>([])
   const [profile, setProfile] = useState<any>(null)
+  const [connectedIntegrations, setConnectedIntegrations] = useState<Record<string, boolean>>({})
   const [chatOpen, setChatOpen] = useState(false)
   const [showAttachMenu, setShowAttachMenu] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
   const attachMenuRef = useRef<HTMLDivElement>(null)
   const [agentTasks, setAgentTasks] = useState<AgentTask[]>([])
   const [proactiveActions, setProactiveActions] = useState<ProactiveAction[]>([])
+  const [strategicRecommendations, setStrategicRecommendations] = useState<any[]>([])
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false)
+  const [selectedFunctionFilter, setSelectedFunctionFilter] = useState<string>('all') // 'all' | 'product' | 'marketing' | etc.
   const [missingIntegrationModal, setMissingIntegrationModal] = useState<MissingIntegrationModal>({
     show: false,
     missingIntegrations: [],
@@ -77,6 +110,20 @@ export default function DashboardPage() {
   const timelineEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+  
+  // Approval system state
+  const [pendingApprovals, setPendingApprovals] = useState<any[]>([])
+  const [selectedApproval, setSelectedApproval] = useState<any | null>(null)
+  const [showApprovalModal, setShowApprovalModal] = useState(false)
+  const [loadingApprovals, setLoadingApprovals] = useState(false)
+  
+  // Integration activity feed state
+  const [showActivityFeed, setShowActivityFeed] = useState(false)
+  const [integrationActivity, setIntegrationActivity] = useState<any[]>([])
+  const [loadingActivity, setLoadingActivity] = useState(false)
+  
+  // North Star edit modal state
+  const [showEditNorthStar, setShowEditNorthStar] = useState(false)
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -117,9 +164,13 @@ export default function DashboardPage() {
         loadData()
         loadAgentTasks()
         loadContacts()
+        loadConnectedIntegrations()
+        loadPendingApprovals()
+        loadIntegrationActivity()
         // Load proactive actions after a small delay to ensure auth is fully settled
         setTimeout(() => {
           loadProactiveActions()
+          loadStrategicRecommendations()
         }, 100)
         
         channel = supabase
@@ -490,13 +541,24 @@ export default function DashboardPage() {
           actionTitle: action.title
         })
         
+        // Build input for agent - if data is empty, use action title as task
+        let agentInput = action.data?.input || action.data || {}
+        
+        // For task-executor agent, if no task is provided, use the action title
+        if (agentId === 'task-executor' && (!agentInput.task && !agentInput.context?.task)) {
+          agentInput = {
+            task: action.title || action.data?.task || 'Complete the requested task',
+            context: action.data?.context || {}
+          }
+        }
+        
         const res = await fetch('/api/agents/execute', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({
             agentId,
-            input: action.data?.input || action.data || {}
+            input: agentInput
           }),
         })
         
@@ -623,6 +685,42 @@ export default function DashboardPage() {
           setMessages((prev) => [
             ...prev,
             { role: 'assistant', content: `Failed: ${errorMsg}` },
+          ])
+          setChatOpen(true)
+          setLoading(false)
+          return
+        }
+
+        // Check if action requires approval
+        if (result.success && result.data?.requiresApproval) {
+          // Action requires approval - load pending approvals and show modal
+          console.log('[Dashboard] ⚠️ Action requires approval:', result.data.approvalId)
+          await loadPendingApprovals()
+          
+          // Find the approval that was just created
+          if (result.data.approvalId) {
+            const approvalRes = await fetch(`/api/approvals/${result.data.approvalId}`, { credentials: 'include' })
+            if (approvalRes.ok) {
+              const approvalData = await approvalRes.json()
+              if (approvalData.approval) {
+                setSelectedApproval(approvalData.approval)
+                setShowApprovalModal(true)
+              }
+            }
+          }
+          
+          // Update task status to pending approval
+          setAgentTasks((prev) => 
+            prev.map((task) => 
+              task.id === tempTaskId
+                ? { ...task, status: 'running' as const, output: { ...result.data, waitingForApproval: true } }
+                : task
+            )
+          )
+          
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: `⚠️ **Action requires approval**\n\n${result.data.message || 'Please review and approve this action before it executes.'}` },
           ])
           setChatOpen(true)
           setLoading(false)
@@ -919,6 +1017,216 @@ export default function DashboardPage() {
     }
   }
 
+  const loadConnectedIntegrations = async () => {
+    try {
+      const res = await fetch('/api/integrations/status', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setConnectedIntegrations(data.status || {})
+      }
+    } catch (error) {
+      console.error('Error loading connected integrations:', error)
+    }
+  }
+
+  const loadPendingApprovals = async () => {
+    try {
+      setLoadingApprovals(true)
+      const res = await fetch('/api/approvals?status=pending', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setPendingApprovals(data.approvals || [])
+        // If there are pending approvals, show the modal for the first one
+        if (data.approvals && data.approvals.length > 0 && !selectedApproval) {
+          setSelectedApproval(data.approvals[0])
+          setShowApprovalModal(true)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading pending approvals:', error)
+    } finally {
+      setLoadingApprovals(false)
+    }
+  }
+
+  const loadIntegrationActivity = async () => {
+    try {
+      setLoadingActivity(true)
+      const res = await fetch('/api/integrations/activity?limit=10', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setIntegrationActivity(data.activity || [])
+      }
+    } catch (error) {
+      console.error('Error loading integration activity:', error)
+    } finally {
+      setLoadingActivity(false)
+    }
+  }
+
+  const handleApprove = async (approvalId: string, modifiedData?: any) => {
+    try {
+      const res = await fetch(`/api/approvals/${approvalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: modifiedData ? 'modified' : 'approved',
+          modified_data: modifiedData,
+        }),
+        credentials: 'include',
+      })
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'Failed to approve' }))
+        throw new Error(error.error || 'Failed to approve')
+      }
+
+      const data = await res.json()
+      
+      // If the action should be executed, do it now
+      if (data.executeAction && data.actionData) {
+        // Execute the action using the task executor
+        const actionToExecute = data.actionData
+        if (actionToExecute.tool === 'send_email' && actionToExecute.params) {
+          // Re-execute the email send with the approved/modified data
+          const taskRes = await fetch('/api/agents/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              agentId: 'task-executor',
+              input: {
+                task: `Send email: ${actionToExecute.params.subject}`,
+                skipApproval: true, // Skip approval since we already approved
+                ...actionToExecute.params,
+              },
+            }),
+            credentials: 'include',
+          })
+
+          if (taskRes.ok) {
+            const taskData = await taskRes.json()
+            setMessages((prev) => [
+              ...prev,
+              { role: 'assistant', content: `✓ Email sent successfully!` },
+            ])
+            setChatOpen(true)
+            loadAgentTasks()
+          }
+        }
+      }
+
+      // Reload approvals and remove this one
+      await loadPendingApprovals()
+      if (selectedApproval?.id === approvalId) {
+        setSelectedApproval(null)
+        setShowApprovalModal(false)
+      }
+    } catch (error: any) {
+      console.error('Error approving:', error)
+      alert(`Failed to approve: ${error.message}`)
+    }
+  }
+
+  const handleReject = async (approvalId: string, reason?: string) => {
+    try {
+      const res = await fetch(`/api/approvals/${approvalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'rejected',
+          rejection_reason: reason,
+        }),
+        credentials: 'include',
+      })
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'Failed to reject' }))
+        throw new Error(error.error || 'Failed to reject')
+      }
+
+      // Update agent task if linked
+      await loadAgentTasks()
+      
+      // Reload approvals and remove this one
+      await loadPendingApprovals()
+      if (selectedApproval?.id === approvalId) {
+        setSelectedApproval(null)
+        setShowApprovalModal(false)
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: `Action rejected. ${reason ? `Reason: ${reason}` : ''}` },
+      ])
+      setChatOpen(true)
+    } catch (error: any) {
+      console.error('Error rejecting:', error)
+      alert(`Failed to reject: ${error.message}`)
+    }
+  }
+
+  const handleSaveNorthStar = async (buildingDescription: string, currentGoal: string) => {
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          building_description: buildingDescription || null,
+          current_goal: currentGoal || null,
+        }),
+        credentials: 'include',
+      })
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'Failed to update North Star' }))
+        throw new Error(error.error || 'Failed to update North Star')
+      }
+
+      const updatedProfile = await res.json()
+      setProfile(updatedProfile)
+      
+      // Refresh recommendations since they depend on the North Star
+      loadStrategicRecommendations()
+      
+      return updatedProfile
+    } catch (error: any) {
+      console.error('Error saving North Star:', error)
+      throw error
+    }
+  }
+
+  const loadStrategicRecommendations = async () => {
+    try {
+      setLoadingRecommendations(true)
+      console.log('[Dashboard] Loading strategic recommendations...')
+      const res = await fetch('/api/recommendations', { credentials: 'include' })
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        console.error('[Dashboard] Recommendations API error:', res.status, errorData)
+        setStrategicRecommendations([])
+        return
+      }
+      
+      const data = await res.json()
+      console.log('[Dashboard] Received recommendations:', data.count || 0, 'recommendations')
+      
+      if (data.recommendations && Array.isArray(data.recommendations)) {
+        setStrategicRecommendations(data.recommendations)
+        console.log('[Dashboard] Set', data.recommendations.length, 'recommendations')
+      } else {
+        console.warn('[Dashboard] No recommendations array in response:', data)
+        setStrategicRecommendations([])
+      }
+    } catch (error: any) {
+      console.error('[Dashboard] Error loading strategic recommendations:', error)
+      console.error('[Dashboard] Error details:', error.message, error.stack)
+      setStrategicRecommendations([])
+    } finally {
+      setLoadingRecommendations(false)
+    }
+  }
+
   const loadProactiveActions = async () => {
     try {
       console.log('[Dashboard] Loading proactive actions...')
@@ -1029,36 +1337,39 @@ export default function DashboardPage() {
   })
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
       {/* Top Navigation */}
-      <nav className="bg-white border-b border-zinc-200">
+      <nav className="bg-white dark:bg-zinc-950 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 dark:border-zinc-800">
         <div className="mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-base font-medium text-black">FounderOS</h1>
+          <Link href="/dashboard" className="flex items-center">
+            <img src="/fOS.png" alt="fOS" className="h-8 w-auto" />
+          </Link>
           <div className="flex items-center gap-6 text-sm">
-            <Link href="/dashboard" className="text-black font-medium">
+            <Link href="/dashboard" className="text-black dark:text-white dark:text-black dark:text-white dark:text-black font-medium">
               Dashboard
             </Link>
-            <Link href="/roadmap" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/roadmap" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:hover:text-white dark:text-black dark:text-white dark:text-black dark:hover:text-white dark:text-black transition-colors">
               Roadmap
             </Link>
-            <Link href="/contacts" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/contacts" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:hover:text-white dark:text-black dark:text-white dark:text-black dark:hover:text-white dark:text-black transition-colors">
               Network
             </Link>
-            <Link href="/documents" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/documents" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:hover:text-white dark:text-black dark:text-white dark:text-black dark:hover:text-white dark:text-black transition-colors">
               Documents
             </Link>
-            <Link href="/agents" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/agents" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:hover:text-white dark:text-black dark:text-white dark:text-black dark:hover:text-white dark:text-black transition-colors">
               AI Agents
             </Link>
-            <Link href="/integrations" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/integrations" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:hover:text-white dark:text-black dark:text-white dark:text-black dark:hover:text-white dark:text-black transition-colors">
               Integrations
             </Link>
-            <Link href="/dev" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/dev" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:hover:text-white dark:text-black dark:text-white dark:text-black dark:hover:text-white dark:text-black transition-colors">
               Dev
             </Link>
+            <ThemeToggle />
             <button
               onClick={handleSignOut}
-              className="text-zinc-600 hover:text-black transition-colors"
+              className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:hover:text-white dark:text-black dark:text-white dark:text-black dark:hover:text-white dark:text-black transition-colors"
             >
               Sign Out
             </button>
@@ -1068,165 +1379,573 @@ export default function DashboardPage() {
 
       <div className="flex h-[calc(100vh-73px)]">
         {/* Left Sidebar - Metrics */}
-        <div className="w-80 bg-white border-r border-zinc-200 p-6 overflow-y-auto">
-          <h2 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">
+        <div className="w-80 bg-white dark:bg-zinc-950 dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 dark:border-zinc-800 p-6 overflow-y-auto">
+          <h2 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 dark:text-zinc-400 uppercase tracking-wider mb-4">
             Your Resources
           </h2>
 
           <div className="space-y-4">
             {/* Time Availability Card */}
-            <div className="p-4 border border-zinc-200 rounded-lg bg-white hover:shadow-sm transition-shadow">
+            <div className="p-4 border border-zinc-200 dark:border-zinc-800 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 dark:bg-zinc-900 hover:shadow-sm transition-shadow">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-zinc-600">Time Available</span>
+                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">Time Available</span>
                 <span className="text-2xl">⏰</span>
               </div>
-              <div className="text-2xl font-bold text-black">
+              <div className="text-2xl font-bold text-black dark:text-white dark:text-black dark:text-white dark:text-black">
                 {profile?.hours_per_week || 0}
-                <span className="text-sm font-normal text-zinc-500"> hrs/week</span>
+                <span className="text-sm font-normal text-zinc-500 dark:text-zinc-400 dark:text-zinc-400"> hrs/week</span>
               </div>
-              <div className="mt-2 text-xs text-zinc-500">
+              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">
                 ~{Math.round((profile?.hours_per_week || 0) / 7)} hrs/day
               </div>
             </div>
 
             {/* Budget Card */}
-            <div className="p-4 border border-zinc-200 rounded-lg bg-white hover:shadow-sm transition-shadow">
+            <div className="p-4 border border-zinc-200 dark:border-zinc-800 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 dark:bg-zinc-900 hover:shadow-sm transition-shadow">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-zinc-600">Budget</span>
+                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">Budget</span>
                 <span className="text-2xl">💰</span>
               </div>
-              <div className="text-2xl font-bold text-black">
+              <div className="text-2xl font-bold text-black dark:text-white dark:text-black dark:text-white dark:text-black">
                 ${(profile?.funds_available || 0).toLocaleString()}
               </div>
-              <div className="mt-2 text-xs text-zinc-500">
+              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">
                 Available funds
               </div>
             </div>
 
             {/* Team Card */}
-            <div className="p-4 border border-zinc-200 rounded-lg bg-white hover:shadow-sm transition-shadow">
+            <div className="p-4 border border-zinc-200 dark:border-zinc-800 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 dark:bg-zinc-900 hover:shadow-sm transition-shadow">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-zinc-600">Team</span>
+                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">Team</span>
                 <span className="text-2xl">👥</span>
               </div>
-              <div className="text-2xl font-bold text-black">
+              <div className="text-2xl font-bold text-black dark:text-white dark:text-black dark:text-white dark:text-black">
                 {profile?.team_size || 1}
               </div>
-              <div className="mt-2 text-xs text-zinc-500">
+              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">
                 {profile?.team_size === 1 ? 'Solo founder' : 'Team members'}
               </div>
             </div>
 
             {/* Connections Preview Card */}
-            <div className="p-4 border border-zinc-200 rounded-lg bg-white hover:shadow-sm transition-shadow">
+            <div className="p-4 border border-zinc-200 dark:border-zinc-800 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 dark:bg-zinc-900 hover:shadow-sm transition-shadow">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-zinc-600">Network</span>
+                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">Network</span>
                 <span className="text-2xl">🌐</span>
               </div>
-              <div className="text-2xl font-bold text-black">
+              <div className="text-2xl font-bold text-black dark:text-white dark:text-black dark:text-white dark:text-black">
                 24
               </div>
-              <div className="mt-2 text-xs text-zinc-500">
+              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-400">
                 Active connections
               </div>
               <Link
                 href="/contacts"
-                className="mt-2 text-xs text-black hover:underline inline-block"
+                className="mt-2 text-xs text-black dark:text-white dark:text-black dark:text-white dark:text-black hover:underline inline-block"
               >
                 View all →
               </Link>
             </div>
 
             {/* Roadmap Preview Card */}
-            <div className="p-4 border border-zinc-200 rounded-lg bg-white hover:shadow-sm transition-shadow">
+            <div className="p-4 border border-zinc-200 dark:border-zinc-800 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 dark:bg-zinc-900 hover:shadow-sm transition-shadow">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-zinc-600">Roadmap</span>
+                <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">Roadmap</span>
                 <span className="text-2xl">🗺️</span>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-600">Todo</span>
-                  <span className="font-medium text-black">{upcomingTasks.length}</span>
+                  <span className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">Todo</span>
+                  <span className="font-medium text-black dark:text-white dark:text-black dark:text-white dark:text-black">{upcomingTasks.length}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-600">In Progress</span>
-                  <span className="font-medium text-black">{inProgressTasks.length}</span>
+                  <span className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400">In Progress</span>
+                  <span className="font-medium text-black dark:text-white dark:text-black dark:text-white dark:text-black">{inProgressTasks.length}</span>
                 </div>
               </div>
               <Link
                 href="/roadmap"
-                className="mt-2 text-xs text-black hover:underline inline-block"
+                className="mt-2 text-xs text-black dark:text-white dark:text-black dark:text-white dark:text-black hover:underline inline-block"
               >
                 View roadmap →
               </Link>
             </div>
 
+            {/* Connected Integrations - Individual Cards */}
+            {(() => {
+              const connected = Object.entries(connectedIntegrations).filter(([_, isConnected]) => isConnected)
+              const integrationNames: Record<string, string> = {
+                'gmail': 'Gmail',
+                'google-calendar': 'Google Calendar',
+                'google_calendar': 'Google Calendar',
+                'google-docs': 'Google Docs',
+                'google_docs': 'Google Docs',
+                'outlook': 'Outlook',
+                'slack': 'Slack',
+                'discord': 'Discord',
+                'zoom': 'Zoom',
+                'calendly': 'Calendly',
+                'notion': 'Notion',
+                'airtable': 'Airtable',
+                'coda': 'Coda',
+                'tally': 'Tally',
+                'typeform': 'Typeform',
+                'google-forms': 'Google Forms',
+                'google_forms': 'Google Forms',
+                'productboard': 'ProductBoard',
+                'linear': 'Linear',
+                'jira': 'Jira',
+                'asana': 'Asana',
+                'github': 'GitHub',
+                'gitlab': 'GitLab',
+                'vercel': 'Vercel',
+                'linkedin': 'LinkedIn',
+                'twitter': 'Twitter/X',
+                'google-analytics': 'Google Analytics',
+                'google_analytics': 'Google Analytics',
+                'stripe': 'Stripe',
+                'quickbooks': 'QuickBooks',
+                'intercom': 'Intercom',
+                'zendesk': 'Zendesk',
+                'mailchimp': 'Mailchimp',
+                'hubspot': 'HubSpot',
+                'mixpanel': 'Mixpanel',
+                'amplitude': 'Amplitude',
+              }
+              
+              const integrationIcons: Record<string, string> = {
+                'gmail': '📧',
+                'google-calendar': '📅',
+                'google_calendar': '📅',
+                'google-docs': '📄',
+                'google_docs': '📄',
+                'outlook': '📨',
+                'slack': '💬',
+                'discord': '🎮',
+                'zoom': '🎥',
+                'calendly': '🗓️',
+                'notion': '📝',
+                'airtable': '🗂️',
+                'coda': '📋',
+                'tally': '📊',
+                'typeform': '📝',
+                'google-forms': '📋',
+                'google_forms': '📋',
+                'productboard': '🎯',
+                'linear': '⚡',
+                'jira': '🔷',
+                'asana': '✓',
+                'github': '🐙',
+                'gitlab': '🦊',
+                'vercel': '▲',
+                'linkedin': '💼',
+                'twitter': '🐦',
+                'google-analytics': '📈',
+                'google_analytics': '📈',
+                'stripe': '💳',
+                'quickbooks': '💰',
+                'intercom': '💬',
+                'zendesk': '🎫',
+                'mailchimp': '🐵',
+                'hubspot': '🧲',
+                'mixpanel': '📊',
+                'amplitude': '📉',
+              }
+              
+              return connected.length > 0 ? (
+                <>
+                  {connected.slice(0, 5).map(([id, _]) => (
+                    <div key={id} className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-white dark:bg-zinc-950 hover:shadow-sm transition-shadow">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{integrationNames[id] || id}</span>
+                        <span className="text-2xl">{integrationIcons[id] || '🔌'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0"></div>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">Connected</span>
+                      </div>
+                    </div>
+                  ))}
+                  {connected.length > 5 && (
+                    <Link
+                      href="/integrations"
+                      className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 hover:bg-zinc-100 hover:shadow-sm transition-all text-center"
+                    >
+                      <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1">
+                        +{connected.length - 5} more
+                      </div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                        Manage integrations →
+                      </div>
+                    </Link>
+                  )}
+                  {connected.length <= 5 && (
+                    <Link
+                      href="/integrations"
+                      className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50 hover:bg-zinc-100 hover:shadow-sm transition-all text-center"
+                    >
+                      <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+                        Manage integrations →
+                      </div>
+                    </Link>
+                  )}
+                </>
+              ) : null
+            })()}
+
             {/* Current Goal Card */}
-            <div className="p-4 border border-zinc-200 rounded-lg bg-zinc-50">
-              <div className="text-xs font-medium text-zinc-600 mb-2">Current Goal</div>
-              <div className="text-sm text-black font-medium">
+            <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg bg-zinc-50">
+              <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-2">Current Goal</div>
+              <div className="text-sm text-black dark:text-white dark:text-black font-medium mb-3">
                 {profile?.current_goal || 'Loading...'}
               </div>
+              <button
+                onClick={async () => {
+                  setLoading(true)
+                  try {
+                    const res = await fetch('/api/strategic/plan', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({})
+                    })
+                    if (res.ok) {
+                      const data = await res.json()
+                      setMessages((prev) => [
+                        ...prev,
+                        { 
+                          role: 'assistant', 
+                          content: `🎯 **Strategic Plan Generated!**\n\n${JSON.stringify(data.plan, null, 2).substring(0, 500)}...\n\nView full plan in Roadmap.`
+                        }
+                      ])
+                      setChatOpen(true)
+                      loadData() // Refresh roadmap
+                      loadStrategicRecommendations()
+                    }
+                  } catch (error: any) {
+                    console.error('Error generating strategic plan:', error)
+                  } finally {
+                    setLoading(false)
+                  }
+                }}
+                disabled={loading}
+                className="w-full px-3 py-2 bg-black dark:bg-white dark:bg-zinc-950 text-white dark:text-black text-xs font-medium rounded hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Generate Strategic Plan
+              </button>
             </div>
           </div>
         </div>
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Proactive Actions Bar */}
-          <div className="bg-white border-b border-zinc-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-semibold text-black">Today's Suggestions</h2>
-                <p className="text-sm text-zinc-500">{today}</p>
+          {/* North Star - What User Is Building */}
+          {(profile?.building_description || profile?.current_goal) && (
+            <div className="bg-gradient-to-br from-black to-zinc-900 dark:from-white dark:to-zinc-100 border-b border-zinc-800 dark:border-zinc-200 p-6 text-white dark:text-black relative group">
+              <div className="max-w-4xl mx-auto">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-xs font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Your North Star</div>
+                  <button
+                    onClick={() => setShowEditNorthStar(true)}
+                    className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-white/10 dark:hover:bg-black/10 transition-colors opacity-0 group-hover:opacity-100"
+                    title="Edit North Star"
+                  >
+                    <svg className="w-4 h-4 text-white dark:text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                </div>
+                {profile?.building_description_summary && (
+                  <div className="text-xl font-bold mb-2">
+                    BUILDING: {profile.building_description_summary.toUpperCase()}
+                  </div>
+                )}
+                {profile?.current_goal_summary && (
+                  <div className="text-lg font-semibold text-zinc-300 dark:text-zinc-700">
+                    GOAL: {profile.current_goal_summary}
+                  </div>
+                )}
               </div>
             </div>
+          )}
 
-            <div className="space-y-3">
-              {proactiveActions.length > 0 ? (
-                proactiveActions.map((action) => (
-                  <div
-                    key={action.id}
-                    className="flex items-center justify-between p-4 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3 flex-1">
-                      <span className="text-2xl">{action.icon}</span>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-black">{action.title}</div>
-                        <div className="text-xs text-zinc-600">{action.description}</div>
-                      </div>
-                    </div>
+          {/* Strategic Recommendations Section */}
+          {strategicRecommendations.length > 0 && (
+            <div className="bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 px-6 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-black dark:text-white dark:text-black">Strategic Recommendations</h2>
+                <div className="flex items-center gap-2">
+                  {/* Function Filter Toggle */}
+                  <div className="flex items-center gap-1 bg-zinc-100 rounded-lg p-0.5">
                     <button
-                      onClick={() => executeAction(action.action)}
-                      disabled={loading}
-                      className="px-4 py-2 bg-black text-white text-xs font-medium rounded hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      onClick={() => setSelectedFunctionFilter('all')}
+                      className={`px-2 py-1 text-[10px] font-medium rounded transition-colors ${
+                        selectedFunctionFilter === 'all'
+                          ? 'bg-white dark:bg-zinc-950 text-black dark:text-white dark:text-black shadow-sm'
+                          : 'text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white dark:text-black dark:text-white dark:text-black'
+                      }`}
                     >
-                      Execute
+                      All
                     </button>
+                    {['product', 'marketing', 'finance', 'sales', 'operations', 'legal', 'team', 'analytics'].map((func) => (
+                      <button
+                        key={func}
+                        onClick={() => setSelectedFunctionFilter(func)}
+                        className={`px-2 py-1 text-[10px] font-medium rounded transition-colors capitalize ${
+                          selectedFunctionFilter === func
+                            ? 'bg-white dark:bg-zinc-950 text-black dark:text-white dark:text-black shadow-sm'
+                            : 'text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white dark:text-black dark:text-white dark:text-black'
+                        }`}
+                      >
+                        {func === 'operations' ? 'Ops' : func}
+                      </button>
+                    ))}
                   </div>
-                ))
-              ) : (
-                <div className="p-4 border border-zinc-200 rounded-lg text-center">
-                  <p className="text-sm text-zinc-500">No suggestions at this time</p>
-                  <p className="text-xs text-zinc-400 mt-1">Check back later for personalized recommendations</p>
+                  <button
+                    onClick={loadStrategicRecommendations}
+                    disabled={loadingRecommendations}
+                    className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white dark:text-black dark:text-white dark:text-black transition-colors disabled:opacity-50"
+                  >
+                    {loadingRecommendations ? '...' : 'Refresh'}
+                  </button>
                 </div>
-              )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {strategicRecommendations
+                  .filter((rec) => selectedFunctionFilter === 'all' || rec.functionContext === selectedFunctionFilter)
+                  .slice(0, selectedFunctionFilter === 'all' ? 6 : 12)
+                  .map((rec) => (
+                  <div
+                    key={rec.id}
+                    className={`flex items-center gap-2 px-3 py-2 border rounded-lg transition-all ${
+                      rec.canDoAgentically
+                        ? 'border-zinc-300 bg-zinc-50 hover:bg-zinc-100'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 hover:bg-zinc-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {rec.canDoAgentically && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-black dark:bg-white dark:bg-zinc-950 text-white dark:text-black">
+                          AI
+                        </span>
+                      )}
+                      {getFunctionBadge(rec.functionContext)}
+                    </div>
+                    <span className="text-xs font-medium text-black dark:text-white dark:text-black flex-1 max-w-[200px] truncate">
+                      {rec.title}
+                    </span>
+                    {rec.action && rec.canDoAgentically ? (
+                      <button
+                        onClick={async () => {
+                          // Add to roadmap first, then execute
+                          try {
+                            const roadmapRes = await fetch('/api/roadmap', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              credentials: 'include',
+                            body: JSON.stringify({
+                              title: rec.title,
+                              description: rec.description.substring(0, 200),
+                              status: 'todo',
+                              priority: rec.priority === 'high' ? 10 : rec.priority === 'medium' ? 5 : 0,
+                              function_context: rec.functionContext || null,
+                            }),
+                            })
+                            if (roadmapRes.ok) {
+                              loadData() // Refresh roadmap
+                            }
+                          } catch (e) {
+                            console.error('Error adding to roadmap:', e)
+                          }
+                          executeAction(rec.action)
+                        }}
+                        disabled={loading}
+                        className="px-2 py-1 bg-black dark:bg-white dark:bg-zinc-950 text-white dark:text-black text-[10px] font-medium rounded hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        Do it
+                      </button>
+                    ) : (
+                        <button
+                          onClick={async () => {
+                            // Add to roadmap for manual tasks, then mark recommendation as added
+                            try {
+                              const roadmapRes = await fetch('/api/roadmap', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                            body: JSON.stringify({
+                              title: rec.title,
+                              description: rec.description.substring(0, 200),
+                              status: 'todo',
+                              priority: rec.priority === 'high' ? 10 : rec.priority === 'medium' ? 5 : 0,
+                              function_context: rec.functionContext || null,
+                            }),
+                              })
+                              if (roadmapRes.ok) {
+                                const roadmapData = await roadmapRes.json()
+                                loadData() // Refresh roadmap
+                                
+                                // Mark recommendation as added to roadmap
+                                if (rec.id) {
+                                  try {
+                                    await fetch(`/api/recommendations/${rec.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      credentials: 'include',
+                                      body: JSON.stringify({
+                                        status: 'added_to_roadmap',
+                                        related_roadmap_item_id: roadmapData.item?.id
+                                      }),
+                                    })
+                                  } catch (e) {
+                                    console.error('Error updating recommendation status:', e)
+                                  }
+                                }
+                                
+                                // Remove from recommendations
+                                setStrategicRecommendations(strategicRecommendations.filter(r => r.id !== rec.id))
+                              }
+                            } catch (e) {
+                              console.error('Error adding to roadmap:', e)
+                            }
+                          }}
+                          className="px-2 py-1 border border-zinc-300 text-zinc-600 dark:text-zinc-400 text-[10px] font-medium rounded hover:bg-zinc-50 transition-colors whitespace-nowrap"
+                        >
+                          Add
+                        </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
+          )}
+
+          {/* Today's Suggestions - Top Prioritized Recommendations */}
+          <div className="bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 px-6 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-sm font-semibold text-black dark:text-white dark:text-black">Today's Suggestions</h2>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">{today}</p>
+              </div>
+            </div>
+            
+            {/* Show top recommendations if available, otherwise show proactive actions */}
+            {(strategicRecommendations.length > 0 || proactiveActions.length > 0) && (
+              <div className="space-y-2">
+                {/* Prioritize recommendations over proactive actions */}
+                {(strategicRecommendations.length > 0 
+                  ? strategicRecommendations.filter((rec: any) => selectedFunctionFilter === 'all' || rec.functionContext === selectedFunctionFilter)
+                  : proactiveActions).slice(0, 3).map((action) => {
+                  const isRecommendation = strategicRecommendations.length > 0 && strategicRecommendations.includes(action as any)
+                  const rec = isRecommendation ? action as any : null
+                  const proactiveAction = !isRecommendation ? action as ProactiveAction : null
+                  
+                  return (
+                    <div
+                      key={rec?.id || proactiveAction?.id}
+                      className={`flex items-center justify-between px-3 py-2 border rounded-lg hover:shadow-sm transition-all ${
+                        rec?.canDoAgentically 
+                          ? 'border-zinc-300 bg-zinc-50' 
+                          : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {rec?.canDoAgentically && (
+                          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-black dark:bg-white dark:bg-zinc-950 text-white dark:text-black flex-shrink-0">
+                            AI
+                          </span>
+                        )}
+                        {rec && getFunctionBadge(rec.functionContext)}
+                        {proactiveAction?.icon && (
+                          <span className="text-lg flex-shrink-0">{proactiveAction.icon}</span>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold text-black dark:text-white dark:text-black truncate">
+                            {rec?.title || proactiveAction?.title}
+                          </div>
+                        </div>
+                      </div>
+                      {rec?.action && rec.canDoAgentically && (
+                        <button
+                          onClick={async () => {
+                            // Add to roadmap first, then execute, then mark recommendation as added
+                            try {
+                              const roadmapRes = await fetch('/api/roadmap', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                  body: JSON.stringify({
+                                    title: rec.title,
+                                    description: rec.description?.substring(0, 200) || '',
+                                    status: 'todo',
+                                    priority: rec.priority === 'high' ? 10 : rec.priority === 'medium' ? 5 : 0,
+                                    function_context: rec.functionContext || null,
+                                  }),
+                              })
+                              if (roadmapRes.ok) {
+                                const roadmapData = await roadmapRes.json()
+                                loadData() // Refresh roadmap
+                                
+                                // Mark recommendation as added to roadmap
+                                if (rec.id) {
+                                  try {
+                                    await fetch(`/api/recommendations/${rec.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      credentials: 'include',
+                                      body: JSON.stringify({
+                                        status: 'added_to_roadmap',
+                                        related_roadmap_item_id: roadmapData.item?.id
+                                      }),
+                                    })
+                                    // Remove from UI
+                                    setStrategicRecommendations(strategicRecommendations.filter(r => r.id !== rec.id))
+                                  } catch (e) {
+                                    console.error('Error updating recommendation status:', e)
+                                  }
+                                }
+                              }
+                            } catch (e) {
+                              console.error('Error adding to roadmap:', e)
+                            }
+                            executeAction(rec.action)
+                          }}
+                          disabled={loading}
+                          className="px-2 py-1 bg-black dark:bg-white dark:bg-zinc-950 text-white dark:text-black text-[10px] font-medium rounded hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ml-2"
+                        >
+                          Do it
+                        </button>
+                      )}
+                      {proactiveAction?.action && (
+                        <button
+                          onClick={() => executeAction(proactiveAction.action)}
+                          disabled={loading}
+                          className="px-2 py-1 bg-black dark:bg-white dark:bg-zinc-950 text-white dark:text-black text-[10px] font-medium rounded hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ml-2"
+                        >
+                          Execute
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Main Content */}
           <div className="flex-1 p-6 overflow-y-auto">
             {/* Live Timeline */}
-            <div className="bg-white border border-zinc-200 rounded-lg p-6">
-              <h3 className="text-base font-semibold text-black mb-4">Activity Timeline</h3>
+            <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-6">
+              <h3 className="text-base font-semibold text-black dark:text-white dark:text-black mb-4">Activity Timeline</h3>
               <div className="space-y-0 relative">
                 {agentTasks.length > 0 ? (
                   agentTasks.map((task, index) => {
                     const isLast = index === agentTasks.length - 1
                     const statusConfig = {
-                      pending: { label: 'Initialized', color: 'text-zinc-600', icon: null },
-                      running: { label: 'Running', color: 'text-black', icon: 'animate-spin' },
-                      completed: { label: 'Completed', color: 'text-zinc-600', icon: '✓' },
+                      pending: { label: 'Initialized', color: 'text-zinc-600 dark:text-zinc-400', icon: null },
+                      running: { label: 'Running', color: 'text-black dark:text-white dark:text-black', icon: 'animate-spin' },
+                      completed: { label: 'Completed', color: 'text-zinc-600 dark:text-zinc-400', icon: '✓' },
                       failed: { label: 'Failed', color: 'text-red-500', icon: '✕' }
                     }
                     const config = statusConfig[task.status]
@@ -1255,9 +1974,9 @@ export default function DashboardPage() {
                         {/* Timeline indicator */}
                         <div className="flex flex-col items-center flex-shrink-0">
                           <div className={`w-2 h-2 rounded-full border border-zinc-300 transition-all duration-300 ${
-                            task.status === 'completed' ? 'bg-black border-black' :
+                            task.status === 'completed' ? 'bg-black dark:bg-white dark:bg-zinc-950 border-black' :
                             task.status === 'failed' ? 'bg-red-500 border-red-500' :
-                            task.status === 'running' ? 'bg-black border-black animate-pulse' :
+                            task.status === 'running' ? 'bg-black dark:bg-white dark:bg-zinc-950 border-black animate-pulse' :
                             'bg-zinc-200 border-zinc-300'
                           }`} />
                           {!isLast && (
@@ -1274,10 +1993,10 @@ export default function DashboardPage() {
                                 <span className="text-sm font-semibold text-red-500">Error:</span>
                               )}
                               {task.status === 'completed' && (
-                                <span className="text-sm font-semibold text-black">Success:</span>
+                                <span className="text-sm font-semibold text-black dark:text-white dark:text-black">Success:</span>
                               )}
                               <span className={`text-sm font-semibold ${
-                                task.status === 'failed' ? 'text-red-500' : 'text-black'
+                                task.status === 'failed' ? 'text-red-500' : 'text-black dark:text-white dark:text-black'
                               }`}>
                                 {taskTitle}
                               </span>
@@ -1296,7 +2015,7 @@ export default function DashboardPage() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                               )}
-                              <span className="text-xs text-zinc-500">{formattedDate}</span>
+                              <span className="text-xs text-zinc-500 dark:text-zinc-400">{formattedDate}</span>
                             </div>
                           </div>
                           
@@ -1311,8 +2030,8 @@ export default function DashboardPage() {
                           {(steps.length > 0 || currentStep) && (
                             <div className="space-y-1.5 mt-3 ml-1">
                               {currentStep && (
-                                <div className="flex items-center gap-2 text-sm text-black opacity-0 animate-[fadeIn_0.3s_ease-out_0.3s_forwards]">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-black animate-pulse flex-shrink-0" />
+                                <div className="flex items-center gap-2 text-sm text-black dark:text-white dark:text-black opacity-0 animate-[fadeIn_0.3s_ease-out_0.3s_forwards]">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-black dark:bg-white dark:bg-zinc-950 animate-pulse flex-shrink-0" />
                                   <span>{currentStep}</span>
                                 </div>
                               )}
@@ -1349,7 +2068,7 @@ export default function DashboardPage() {
                                 return (
                                   <div 
                                     key={stepIndex} 
-                                    className="flex items-center gap-2 text-sm text-zinc-600 opacity-0 animate-[fadeInSlide_0.3s_ease-out_forwards]"
+                                    className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400 opacity-0 animate-[fadeInSlide_0.3s_ease-out_forwards]"
                                     style={{ animationDelay: `${delay}s` }}
                                   >
                                     <svg className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1364,8 +2083,8 @@ export default function DashboardPage() {
                           
                           {/* Running indicator */}
                           {task.status === 'running' && !currentStep && steps.length === 0 && (
-                            <div className="flex items-center gap-2 text-sm text-black mt-3 ml-1 animate-pulse">
-                              <div className="w-1.5 h-1.5 rounded-full bg-black" />
+                            <div className="flex items-center gap-2 text-sm text-black dark:text-white dark:text-black mt-3 ml-1 animate-pulse">
+                              <div className="w-1.5 h-1.5 rounded-full bg-black dark:bg-white dark:bg-zinc-950" />
                               <span>Processing...</span>
                             </div>
                           )}
@@ -1375,7 +2094,7 @@ export default function DashboardPage() {
                   })
                 ) : (
                   <div className="py-8 text-center">
-                    <p className="text-sm text-zinc-500">No recent activity</p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">No recent activity</p>
                     <p className="text-xs text-zinc-400 mt-1">Agent tasks will appear here as they execute</p>
                   </div>
                 )}
@@ -1386,7 +2105,7 @@ export default function DashboardPage() {
 
           {/* AI Chat - Notion-style Bottom Right */}
           <div
-            className={`fixed bottom-6 right-6 z-50 bg-white border border-blue-200 shadow-2xl flex flex-col overflow-hidden transition-all duration-500 ease-out ${
+            className={`fixed bottom-6 right-6 z-50 bg-white dark:bg-zinc-950 border border-blue-200 shadow-2xl flex flex-col overflow-hidden transition-all duration-500 ease-out ${
               chatOpen
                 ? 'w-[30vw] h-[50vh] rounded-xl'
                 : 'w-14 h-14 rounded-full'
@@ -1405,10 +2124,10 @@ export default function DashboardPage() {
                   setChatOpen(true)
                   setTimeout(() => setIsAnimating(false), 500)
                 }}
-                className="w-full h-full flex items-center justify-center relative hover:bg-zinc-50 transition-colors rounded-full bg-white"
+                className="w-full h-full flex items-center justify-center relative hover:bg-zinc-50 transition-colors rounded-full bg-white dark:bg-zinc-950"
               >
                 <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center">
-                  <span className="text-xs font-medium text-black">fOS</span>
+                  <span className="text-xs font-medium text-black dark:text-white dark:text-black">fOS</span>
                 </div>
                 {messages.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white"></span>
@@ -1418,9 +2137,9 @@ export default function DashboardPage() {
               // Opened State: Full Chat Interface
               <>
                 {/* Top Menu Bar */}
-                <div className="flex items-center justify-between px-4 py-2.5 bg-white">
+                <div className="flex items-center justify-between px-4 py-2.5 bg-white dark:bg-zinc-950">
                   <div className="flex items-center gap-3">
-                    <button className="px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 rounded-md flex items-center gap-1.5 transition-colors font-medium border border-zinc-200 bg-zinc-50">
+                    <button className="px-2.5 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100 rounded-md flex items-center gap-1.5 transition-colors font-medium border border-zinc-200 dark:border-zinc-800 bg-zinc-50">
                       <svg className="w-4 h-4" viewBox="0 0 24 24">
                         <defs>
                           <linearGradient id="rocketGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -1439,7 +2158,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-1">
                     <button className="p-1.5 hover:bg-zinc-100 rounded transition-colors" title="New chat">
-                      <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-zinc-600 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
                     </button>
@@ -1452,12 +2171,12 @@ export default function DashboardPage() {
                       className="p-1.5 hover:bg-zinc-100 rounded transition-colors"
                       title="Minimize chat"
                     >
-                      <svg className="w-4 h-4 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 text-zinc-600 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                       </svg>
                     </button>
                     <div className="ml-1.5 w-6 h-6 rounded-full bg-zinc-200 flex items-center justify-center">
-                      <span className="text-[10px] font-medium text-black">fOS</span>
+                      <span className="text-[10px] font-medium text-black dark:text-white dark:text-black">fOS</span>
                     </div>
                   </div>
                 </div>
@@ -1468,9 +2187,9 @@ export default function DashboardPage() {
                     // Initial State: Welcome Message and Recommendations
                     <div className="flex-1 flex flex-col items-start justify-start pt-5 px-6 pb-5">
                       <div className="w-12 h-12 rounded-full bg-zinc-200 flex items-center justify-center mb-3">
-                        <span className="text-sm font-medium text-black">fOS</span>
+                        <span className="text-sm font-medium text-black dark:text-white dark:text-black">fOS</span>
                       </div>
-                      <h2 className="text-xl font-semibold text-black mb-2 text-left">What do you need?</h2>
+                      <h2 className="text-xl font-semibold text-black dark:text-white dark:text-black mb-2 text-left">What do you need?</h2>
                       
                       {/* Recommended Tasks */}
                       <div className="w-full space-y-3 mb-8 max-w-lg">
@@ -1480,10 +2199,10 @@ export default function DashboardPage() {
                               key={action.id}
                               onClick={() => executeAction(action.action)}
                               disabled={loading}
-                              className="w-full text-left px-4 py-3.5 hover:bg-zinc-50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed group bg-white"
+                              className="w-full text-left px-4 py-3.5 hover:bg-zinc-50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed group bg-white dark:bg-zinc-950"
                             >
-                              <div className="text-sm font-semibold text-black mb-1">{action.title}</div>
-                              <div className="text-xs text-zinc-600 leading-relaxed">{action.description}</div>
+                              <div className="text-sm font-semibold text-black dark:text-white dark:text-black mb-1">{action.title}</div>
+                              <div className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">{action.description}</div>
                             </button>
                           )
                         })}
@@ -1543,7 +2262,7 @@ export default function DashboardPage() {
                             if (currentParagraph.length > 0) {
                               const text = currentParagraph.join(' ')
                               elements.push(
-                                <p key={`p-${elementKey++}`} className="mb-4 text-[15px] leading-relaxed text-black">
+                                <p key={`p-${elementKey++}`} className="mb-4 text-[15px] leading-relaxed text-black dark:text-white dark:text-black">
                                   {parseInlineMarkdown(text)}
                                 </p>
                               )
@@ -1558,7 +2277,7 @@ export default function DashboardPage() {
                                   {listItems.map((item, idx) => {
                                     const cleanItem = item.replace(/^[-*•]\s+/, '').trim()
                                     return (
-                                      <li key={idx} className="flex items-start gap-2 text-[15px] text-black">
+                                      <li key={idx} className="flex items-start gap-2 text-[15px] text-black dark:text-white dark:text-black">
                                         <span className="text-zinc-400 mt-1.5 flex-shrink-0">•</span>
                                         <span className="leading-relaxed">
                                           {parseInlineMarkdown(cleanItem)}
@@ -1581,7 +2300,7 @@ export default function DashboardPage() {
                               flushList()
                               const headerText = trimmed.slice(4)
                               elements.push(
-                                <h3 key={`h3-${elementKey++}`} className="mb-3 mt-6 text-base font-semibold text-black first:mt-0">
+                                <h3 key={`h3-${elementKey++}`} className="mb-3 mt-6 text-base font-semibold text-black dark:text-white dark:text-black first:mt-0">
                                   {parseInlineMarkdown(headerText)}
                                 </h3>
                               )
@@ -1590,7 +2309,7 @@ export default function DashboardPage() {
                               flushList()
                               const headerText = trimmed.slice(3)
                               elements.push(
-                                <h2 key={`h2-${elementKey++}`} className="mb-4 mt-8 text-xl font-bold text-black first:mt-0">
+                                <h2 key={`h2-${elementKey++}`} className="mb-4 mt-8 text-xl font-bold text-black dark:text-white dark:text-black first:mt-0">
                                   {parseInlineMarkdown(headerText)}
                                 </h2>
                               )
@@ -1619,12 +2338,12 @@ export default function DashboardPage() {
                           <div key={index}>
                             {message.role === 'user' ? (
                               <div className="flex justify-center mb-4">
-                                <div className="px-3 py-2 rounded-lg bg-zinc-100 text-sm text-zinc-600">
+                                <div className="px-3 py-2 rounded-lg bg-zinc-100 text-sm text-zinc-600 dark:text-zinc-400">
                                   {message.content}
                                 </div>
                               </div>
                             ) : (
-                              <div className="text-black">
+                              <div className="text-black dark:text-white dark:text-black">
                                 {formatMessage(message.content)}
                               </div>
                             )}
@@ -1638,8 +2357,8 @@ export default function DashboardPage() {
                                     disabled={loading}
                                     className="w-full text-left px-3 py-2 border border-zinc-300 rounded hover:bg-zinc-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
-                                    <div className="text-xs font-medium text-black">{action.title}</div>
-                                    <div className="text-[10px] text-zinc-600 mt-0.5">{action.details}</div>
+                                    <div className="text-xs font-medium text-black dark:text-white dark:text-black">{action.title}</div>
+                                    <div className="text-[10px] text-zinc-600 dark:text-zinc-400 mt-0.5">{action.details}</div>
                                   </button>
                                 ))}
                               </div>
@@ -1649,7 +2368,7 @@ export default function DashboardPage() {
                       })}
                       {loading && (
                         <div className="flex justify-start">
-                          <div className="bg-zinc-100 px-3 py-2 rounded-lg text-sm text-black">
+                          <div className="bg-zinc-100 px-3 py-2 rounded-lg text-sm text-black dark:text-white dark:text-black">
                             <span className="inline-block animate-pulse">Thinking...</span>
                           </div>
                         </div>
@@ -1660,28 +2379,28 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Chat Input */}
-                <div className="px-4 py-3 bg-white">
+                <div className="px-4 py-3 bg-white dark:bg-zinc-950">
                   <form onSubmit={handleSubmit} className="relative">
                     <div className="relative flex items-center gap-2">
                       <div className="relative" ref={attachMenuRef}>
                         <button
                           type="button"
                           onClick={() => setShowAttachMenu(!showAttachMenu)}
-                          className="w-6 h-6 flex items-center justify-center text-zinc-600 hover:text-zinc-800 transition-colors"
+                          className="w-6 h-6 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 transition-colors"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                           </svg>
                         </button>
                         {showAttachMenu && (
-                          <div className="absolute bottom-full left-0 mb-2 px-3 py-1.5 bg-black text-white text-xs rounded shadow-lg whitespace-nowrap z-10 opacity-0 animate-[fadeIn_0.2s_ease-out_forwards]">
+                          <div className="absolute bottom-full left-0 mb-2 px-3 py-1.5 bg-black dark:bg-white dark:bg-zinc-950 text-white dark:text-black text-xs rounded shadow-lg whitespace-nowrap z-10 opacity-0 animate-[fadeIn_0.2s_ease-out_forwards]">
                             Add images or PDFs
                           </div>
                         )}
                       </div>
                       <button
                         type="button"
-                        className="w-6 h-6 flex items-center justify-center text-zinc-600 hover:text-zinc-800 transition-colors"
+                        className="w-6 h-6 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -1764,7 +2483,7 @@ export default function DashboardPage() {
                         
                         {/* Mention Dropdown */}
                         {mentionMode.active && (
-                          <div className="mention-dropdown absolute bottom-full left-0 mb-2 w-64 bg-white border border-zinc-200 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
+                          <div className="mention-dropdown absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto">
                             {contacts
                               .filter(c => c.name.toLowerCase().includes(mentionMode.query))
                               .slice(0, 5)
@@ -1794,9 +2513,9 @@ export default function DashboardPage() {
                                     index === selectedMentionIndex ? 'bg-zinc-100' : ''
                                   }`}
                                 >
-                                  <div className="font-medium text-black">{contact.name}</div>
+                                  <div className="font-medium text-black dark:text-white dark:text-black">{contact.name}</div>
                                   {(contact.email || contact.company || contact.position) && (
-                                    <div className="text-xs text-zinc-500 mt-0.5">
+                                    <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                                       {contact.position && contact.company 
                                         ? `${contact.position} at ${contact.company}`
                                         : contact.position || contact.company || contact.email}
@@ -1805,7 +2524,7 @@ export default function DashboardPage() {
                                 </button>
                               ))}
                             {contacts.filter(c => c.name.toLowerCase().includes(mentionMode.query)).length === 0 && (
-                              <div className="px-3 py-2 text-sm text-zinc-500">
+                              <div className="px-3 py-2 text-sm text-zinc-500 dark:text-zinc-400">
                                 No contacts found
                               </div>
                             )}
@@ -1813,13 +2532,13 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-zinc-500">Auto</span>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">Auto</span>
                         <button
                           type="submit"
                           disabled={loading || !input.trim()}
                           className="w-7 h-7 flex items-center justify-center rounded-full bg-zinc-100 hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-4 h-4 text-black dark:text-white dark:text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
                           </svg>
                         </button>
@@ -1833,14 +2552,45 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Approval Modal */}
+      {showApprovalModal && selectedApproval && (
+        <ApprovalModal
+          approval={selectedApproval}
+          onClose={() => {
+            setShowApprovalModal(false)
+            setSelectedApproval(null)
+          }}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
+      )}
+
+      {/* Integration Activity Feed */}
+      <IntegrationActivityFeed
+        activity={integrationActivity}
+        loading={loadingActivity}
+        isOpen={showActivityFeed}
+        onClose={() => setShowActivityFeed(false)}
+      />
+
+      {/* Edit North Star Modal */}
+      {showEditNorthStar && (
+        <EditNorthStarModal
+          buildingDescription={profile?.building_description || null}
+          currentGoal={profile?.current_goal || null}
+          onClose={() => setShowEditNorthStar(false)}
+          onSave={handleSaveNorthStar}
+        />
+      )}
+
       {/* Missing Integration Modal */}
       {missingIntegrationModal.show && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-semibold text-black mb-4">
+        <div className="fixed inset-0 bg-black dark:bg-white dark:bg-zinc-950 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-zinc-950 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-semibold text-black dark:text-white dark:text-black mb-4">
               Connect Integrations Required
             </h3>
-            <p className="text-zinc-600 mb-4">
+            <p className="text-zinc-600 dark:text-zinc-400 mb-4">
               To complete <strong>"{missingIntegrationModal.taskTitle}"</strong>, you need to connect the following integrations:
             </p>
             <ul className="list-disc list-inside mb-6 space-y-2">
@@ -1861,7 +2611,7 @@ export default function DashboardPage() {
             <div className="flex gap-3">
               <Link
                 href="/integrations"
-                className="flex-1 bg-black text-white px-4 py-2 rounded-lg hover:bg-zinc-800 transition-colors text-center"
+                className="flex-1 bg-black dark:bg-white dark:bg-zinc-950 text-white dark:text-black px-4 py-2 rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors text-center"
                 onClick={() => setMissingIntegrationModal({ show: false, missingIntegrations: [], taskTitle: '' })}
               >
                 Go to Integrations

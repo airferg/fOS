@@ -495,12 +495,17 @@ SEVERITY: ${event.severity}
 TITLE: ${event.title}
 DESCRIPTION: ${event.description || 'N/A'}
 
-USER CONTEXT:
+NORTH STAR - WHAT THEY'RE BUILDING:
+- Building: ${userContext.profile?.building_description || 'Not specified'}
 - Goal: ${userContext.profile?.current_goal || 'Not set'}
+
+USER CONTEXT:
 - Stage: ${userContext.profile?.stage || 'Early stage'}
 - Budget: $${userContext.profile?.budget || 0}
 - Active Tasks: ${userContext.roadmapItems.filter(r => r.status === 'in_progress').length}
 - Network Size: ${userContext.contacts.length} contacts
+
+CRITICAL: All proactive messages and suggestions MUST directly relate to helping them BUILD "${userContext.profile?.building_description || userContext.profile?.current_goal || 'their startup'}". Every recommendation should clearly connect to what they're building.
 
 EVENT METADATA:
 ${JSON.stringify(metadata, null, 2)}
@@ -513,9 +518,15 @@ Generate a JSON response:
     {
       "type": "agent_id",
       "title": "Short action title (3-5 words max)",
-      "data": {}
+      "data": {
+        "input": {
+          "task": "Clear, specific task description matching the action title. Example: If title is 'Review GitHub email', task should be 'Review GitHub email about OAuth access'"
+        }
+      }
     }
   ]
+  
+CRITICAL: Always include a "task" field in data.input that clearly describes what the agent should do. The task should match or expand on the action title.
 }
 
 Focus on:

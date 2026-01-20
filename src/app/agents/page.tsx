@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import ThemeToggle from '@/components/ThemeToggle'
 
 interface Agent {
   id: string
@@ -93,33 +94,36 @@ export default function AgentsPage() {
   }, {} as Record<string, Agent[]>)
 
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
       {/* Top Navigation */}
-      <nav className="bg-white border-b border-zinc-200">
+      <nav className="bg-white dark:bg-zinc-950 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 dark:border-zinc-800">
         <div className="mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-base font-medium text-black">FounderOS</h1>
+          <Link href="/dashboard" className="flex items-center">
+            <img src="/fOS.png" alt="fOS" className="h-8 w-auto" />
+          </Link>
           <div className="flex items-center gap-6 text-sm">
-            <Link href="/dashboard" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/dashboard" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
               Dashboard
             </Link>
-            <Link href="/roadmap" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/roadmap" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
               Roadmap
             </Link>
-            <Link href="/contacts" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/contacts" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
               Network
             </Link>
-            <Link href="/documents" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/documents" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
               Documents
             </Link>
-            <Link href="/agents" className="text-black font-medium">
+            <Link href="/agents" className="text-black dark:text-white dark:text-white font-medium">
               AI Agents
             </Link>
-            <Link href="/integrations" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/integrations" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
               Integrations
             </Link>
-            <Link href="/dev" className="text-zinc-600 hover:text-black transition-colors">
+            <Link href="/dev" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
               Dev
             </Link>
+            <ThemeToggle />
           </div>
         </div>
       </nav>
@@ -127,25 +131,25 @@ export default function AgentsPage() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-black">AI Agents</h2>
-          <p className="text-sm text-zinc-600 mt-1">
+          <h2 className="text-2xl font-semibold text-black dark:text-white">AI Agents</h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">
             Autonomous agents that execute tasks for you
           </p>
         </div>
 
         {/* Stats Bar */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-lg p-6 border border-zinc-200">
-            <div className="text-sm text-zinc-600">Available Agents</div>
-            <div className="text-3xl font-semibold text-black mt-2">{agents.length}</div>
+          <div className="bg-white dark:bg-zinc-950 rounded-lg p-6 border border-zinc-200 dark:border-zinc-800">
+            <div className="text-sm text-zinc-600 dark:text-zinc-400">Available Agents</div>
+            <div className="text-3xl font-semibold text-black dark:text-white mt-2">{agents.length}</div>
           </div>
-          <div className="bg-white rounded-lg p-6 border border-zinc-200">
-            <div className="text-sm text-zinc-600">Tasks Executed</div>
-            <div className="text-3xl font-semibold text-black mt-2">{recentTasks.length}</div>
+          <div className="bg-white dark:bg-zinc-950 rounded-lg p-6 border border-zinc-200 dark:border-zinc-800">
+            <div className="text-sm text-zinc-600 dark:text-zinc-400">Tasks Executed</div>
+            <div className="text-3xl font-semibold text-black dark:text-white mt-2">{recentTasks.length}</div>
           </div>
-          <div className="bg-white rounded-lg p-6 border border-zinc-200">
-            <div className="text-sm text-zinc-600">Success Rate</div>
-            <div className="text-3xl font-semibold text-black mt-2">
+          <div className="bg-white dark:bg-zinc-950 rounded-lg p-6 border border-zinc-200 dark:border-zinc-800">
+            <div className="text-sm text-zinc-600 dark:text-zinc-400">Success Rate</div>
+            <div className="text-3xl font-semibold text-black dark:text-white mt-2">
               {recentTasks.length > 0
                 ? Math.round((recentTasks.filter(t => t.status === 'completed').length / recentTasks.length) * 100)
                 : 0}%
@@ -161,7 +165,7 @@ export default function AgentsPage() {
               onClick={() => setSelectedCategory(category)}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${selectedCategory === category
                 ? 'bg-black text-white'
-                : 'bg-white text-zinc-700 border border-zinc-300 hover:bg-zinc-50'
+                : 'bg-white dark:bg-zinc-950 text-zinc-700 border border-zinc-300 hover:bg-zinc-50 dark:bg-zinc-900'
                 }`}
             >
               {category === 'all' ? 'All' : category}
@@ -176,12 +180,12 @@ export default function AgentsPage() {
           <div className="space-y-8">
             {Object.entries(groupedAgents).map(([category, categoryAgents]) => (
               <div key={category}>
-                <h3 className="text-lg font-semibold text-black mb-4">{category}</h3>
+                <h3 className="text-lg font-semibold text-black dark:text-white mb-4">{category}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {categoryAgents.map(agent => (
                     <div
                       key={agent.id}
-                      className="bg-white border border-zinc-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                      className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg p-6 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start justify-between mb-4">
                         <span className="text-3xl">{agent.icon}</span>
@@ -192,8 +196,8 @@ export default function AgentsPage() {
                         )}
                       </div>
 
-                      <h4 className="text-base font-semibold text-black mb-2">{agent.name}</h4>
-                      <p className="text-sm text-zinc-600 mb-4 line-clamp-3">{agent.description}</p>
+                      <h4 className="text-base font-semibold text-black dark:text-white mb-2">{agent.name}</h4>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4 line-clamp-3">{agent.description}</p>
 
                       <button
                         onClick={() => executeAgent(agent.id)}
@@ -213,29 +217,29 @@ export default function AgentsPage() {
         {/* Recent Executions */}
         {recentTasks.length > 0 && (
           <div className="mt-12">
-            <h3 className="text-lg font-semibold text-black mb-4">Recent Executions</h3>
-            <div className="bg-white border border-zinc-200 rounded-lg overflow-hidden">
+            <h3 className="text-lg font-semibold text-black dark:text-white mb-4">Recent Executions</h3>
+            <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg overflow-hidden">
               <table className="w-full">
-                <thead className="bg-zinc-50 border-b border-zinc-200">
+                <thead className="bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
                   <tr>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-zinc-600 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                       Agent
                     </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-zinc-600 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-zinc-600 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                       Started
                     </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-zinc-600 uppercase tracking-wider">
+                    <th className="text-left px-6 py-3 text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
                       Tokens
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-200">
                   {recentTasks.map(task => (
-                    <tr key={task.id} className="hover:bg-zinc-50">
-                      <td className="px-6 py-4 text-sm text-black">{task.agent_name}</td>
+                    <tr key={task.id} className="hover:bg-zinc-50 dark:bg-zinc-900">
+                      <td className="px-6 py-4 text-sm text-black dark:text-white">{task.agent_name}</td>
                       <td className="px-6 py-4 text-sm">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${task.status === 'completed'
                           ? 'bg-green-100 text-green-800'
@@ -248,10 +252,10 @@ export default function AgentsPage() {
                           {task.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-zinc-600">
+                      <td className="px-6 py-4 text-sm text-zinc-600 dark:text-zinc-400">
                         {new Date(task.created_at).toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 text-sm text-zinc-600">
+                      <td className="px-6 py-4 text-sm text-zinc-600 dark:text-zinc-400">
                         {task.tokens_used?.toLocaleString() || '-'}
                       </td>
                     </tr>

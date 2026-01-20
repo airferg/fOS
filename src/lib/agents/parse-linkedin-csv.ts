@@ -91,8 +91,10 @@ export class ParseLinkedInCSVAgent extends BaseAgent<LinkedInCSVParseInput, Link
 
         // Collect unique organizations
         batch.forEach(row => {
-          if (row.Company && row.Company.trim()) {
-            organizations.add(row.Company.trim())
+          // Handle both 'Company' and 'Company' key variations
+          const company = row.Company || row['Company'] || ''
+          if (company && company.trim()) {
+            organizations.add(company.trim())
           }
         })
       }
@@ -131,12 +133,16 @@ export class ParseLinkedInCSVAgent extends BaseAgent<LinkedInCSVParseInput, Link
    */
   private basicParse(row: LinkedInCSVRow): ParsedContact {
     const name = `${row['First Name'] || ''} ${row['Last Name'] || ''}`.trim()
+    
+    // Handle both 'Company'/'Position' and 'Company'/'Position' key variations
+    const company = row.Company || row['Company'] || ''
+    const position = row.Position || row['Position'] || ''
 
     return {
       name: name || 'Unknown',
       email: row['Email Address'] || null,
-      company: row.Company || null,
-      position: row.Position || null,
+      company: company.trim() || null,
+      position: position.trim() || null,
       tags: [],
       connection_strength: 'weak',
       stage: 'contacted',
@@ -170,8 +176,8 @@ Return JSON with an array of enriched contacts.`
     const contactList = batch.map((row, idx) => ({
       id: idx,
       name: `${row['First Name']} ${row['Last Name']}`,
-      company: row.Company,
-      position: row.Position
+      company: row.Company || row['Company'] || '',
+      position: row.Position || row['Position'] || ''
     }))
 
     const userPrompt = `Analyze these LinkedIn connections and enrich each with helpful metadata:
@@ -209,11 +215,15 @@ Return as JSON: { "contacts": [ /* enriched contacts */ ] }`
         const enrichment = enrichedData.find((e: any) => e.id === idx)
         const name = `${row['First Name'] || ''} ${row['Last Name'] || ''}`.trim()
 
+        // Handle both 'Company'/'Position' and 'Company'/'Position' key variations
+        const company = row.Company || row['Company'] || ''
+        const position = row.Position || row['Position'] || ''
+
         return {
           name: name || 'Unknown',
           email: row['Email Address'] || null,
-          company: row.Company || null,
-          position: row.Position || null,
+          company: company.trim() || null,
+          position: position.trim() || null,
           tags: enrichment?.tags || [],
           connection_strength: enrichment?.connection_strength || 'weak',
           stage: enrichment?.stage || 'contacted',

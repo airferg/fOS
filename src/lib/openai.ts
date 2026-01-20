@@ -19,6 +19,12 @@ export const openai = new OpenAI({
 export const DEFAULT_MODEL = 'gpt-4-turbo-preview'
 
 /**
+ * Default max tokens - optimized for cost efficiency
+ * Keeps responses brief and actionable
+ */
+export const DEFAULT_MAX_TOKENS = 600
+
+/**
  * Agent response structure
  */
 export interface AgentResponse<T = any> {

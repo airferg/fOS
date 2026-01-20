@@ -20,7 +20,7 @@ Keep responses SHORT - maximum 2-3 sentences. Get straight to the point. Suggest
       ...messages,
     ],
     temperature: 0.7,
-    max_tokens: 2000,
+    max_tokens: 400, // Optimized: Chat responses should be brief
   })
 
   return response.choices[0]?.message?.content || ''

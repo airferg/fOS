@@ -12,6 +12,8 @@ import './generate-product-spec'
 import './analyze-customer-feedback'
 import './parse-linkedin-csv'
 import './task-executor'
+import './strategic-planner'
+import './progress-analyzer'
 
 // Export framework
 export { executeAgent, agentRegistry, BaseAgent } from './agent-framework'

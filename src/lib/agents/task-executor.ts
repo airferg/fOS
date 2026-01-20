@@ -34,11 +34,16 @@ export class TaskExecutorAgent extends BaseAgent<TaskExecutorInput, TaskExecutor
   description = 'Autonomously executes tasks using available tools and integrations. The AI reasons about how to complete the task and uses tools as needed.'
   category = 'System'
   icon = '🤖'
+  
+  // Store current taskId for tool execution
+  private currentTaskId?: string
 
   async execute(
     input: TaskExecutorInput,
     userId: string
   ): Promise<AgentResponse<TaskExecutorOutput>> {
+    // Extract taskId from input if provided (from executeAgent)
+    this.currentTaskId = (input as any).taskId || undefined
     try {
       // Get user context
       const context = await this.getUserContext(userId)
@@ -80,65 +85,23 @@ export class TaskExecutorAgent extends BaseAgent<TaskExecutorInput, TaskExecutor
       const oneMonthLater = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
       const oneYearLater = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString()
       
-      const systemPrompt = `You are an autonomous AI agent that helps startup founders complete tasks.
+      const systemPrompt = `AI agent for startup founders. Complete tasks using available tools.
 
-CURRENT DATE CONTEXT:
-- Today: ${today}
-- Current time: ${now.toISOString()}
-- Tomorrow: ${tomorrow}
-- One week from now: ${oneWeekLater}
-- One month from now: ${oneMonthLater}
-- One year from now: ${oneYearLater}
+Dates: Today ${today} | Tomorrow ${tomorrow} | Week: ${oneWeekLater} | Month: ${oneMonthLater} | Year: ${oneYearLater}
+Tools: ${toolsDescription.split('\n').slice(0, 10).join('\n')} // First 10 tools only
 
-You have access to these tools/integrations:
-${toolsDescription}
+Task execution:
+1. Use function calling to execute tools
+2. Continue until task complete
+3. Max 2 sentences in final response
+4. Include links: "Created [tool]: [link]"
 
-When given a task:
-1. Break it down into logical steps
-2. Decide which tools you need to use and in what order
-3. Use function calling to execute tools
-4. Reason about the results from each tool
-5. Continue using tools until the task is complete
-6. Provide a clear, SHORT summary (2-3 sentences max)
+Date handling: Use dates above. "Tomorrow" = ${tomorrow}. "Next week" = ${oneWeekLater}. Calculate from TODAY.
+Integration errors: 1 sentence only. Example: "Google Calendar required - Settings > Integrations"
 
-CRITICAL DATE HANDLING:
-- ALWAYS use the CURRENT DATE CONTEXT above when calculating dates
-- If user says "tomorrow", use: ${tomorrow}
-- If user says "next week", use approximately: ${oneWeekLater}
-- If user says "next month", use approximately: ${oneMonthLater}
-- If user says "next year" or "within the next year", use: ${oneYearLater}
-- If user asks for a specific time period, calculate it from TODAY: ${today}
-- DO NOT use hardcoded dates from the past (2023, etc.) - always calculate from current date
-- For calendar tools, pass timeMin (start) and timeMax (end) as ISO datetime strings based on user's request
-- If the user doesn't specify a time range, use appropriate defaults (e.g., 7 days for general "upcoming" queries)
+Context: ${profile?.name || 'Founder'} | Goal: ${profile?.current_goal || 'None'} | Building: ${profile?.building_description || 'N/A'} | Contacts: ${contacts.length}
 
-CRITICAL: Keep all responses SHORT and direct. Maximum 2-3 sentences.
-
-IMPORTANT: When tools return results that include links (url, htmlLink, draftLink), ALWAYS mention the link in your response so users can access what was created. For example: "Created Google Doc: [link]" or "Scheduled calendar event: [link]"
-
-IMPORTANT: If a tool returns an error with "connected: false", it means that integration is not connected. 
-In this case, respond BRIEFLY:
-- State which integration is needed (e.g., "Google Calendar integration required")
-- Tell them to connect it in Settings > Integrations
-- Keep it to 1-2 sentences only
-
-You can call multiple tools in sequence. Think step by step. If a tool fails, try to work around it or explain the issue BRIEFLY.
-
-User Context:
-- Name: ${profile?.name || 'Founder'}
-- Current Goal: ${profile?.current_goal || 'Not set'}
-- Building: ${profile?.building_description || 'Not specified'}
-- Roadmap Items: ${roadmapItems.slice(0, 5).map((r: any) => r.title).join(', ') || 'None'}
-- Contacts: ${contacts.length} contacts in database
-${contacts.length > 0 ? `\n- Sample contacts (for reference): ${contacts.slice(0, 10).map((c: any) => `${c.name || 'Unknown'}${c.email ? ` (${c.email})` : ''}`).join(', ')}` : ''}
-
-IMPORTANT - Contact Lookup:
-- When user mentions a contact name (e.g., "Kean Harrison", "email it to John"), use the 'lookup_contact' tool to find their email address
-- This tool searches both your database contacts AND Gmail contacts
-- If contact is found in Gmail but not in database, you can still use their email address
-- Always use the lookup_contact tool before drafting emails to ensure you have the correct email address
-
-Remember: Keep all responses SHORT - maximum 2-3 sentences.`
+Contact lookup: Use 'lookup_contact' tool when user mentions a name. Searches DB + Gmail.`
 
       const userPrompt = `Task: ${input.task}
 
@@ -167,7 +130,7 @@ Break down this task and execute it using the available tools. Use function call
           tools: openAIFunctions.length > 0 ? openAIFunctions : undefined,
           tool_choice: openAIFunctions.length > 0 ? 'auto' : undefined,
           temperature: 0.7,
-          max_tokens: 2000
+          max_tokens: 800 // Optimized: Brief task execution responses
         })
 
         lastCompletion = completion
@@ -203,7 +166,26 @@ Break down this task and execute it using the available tools. Use function call
               
               console.log(`[Task Executor] Executing tool: ${tool.name}`, params)
               
-              const result = await tool.execute(params, userId)
+              // Pass taskId to tool for approval tracking
+              const result = await tool.execute(params, userId, { agentTaskId: this.currentTaskId })
+              
+              // Check if tool requires approval
+              if (result.requiresApproval) {
+                // Return early with approval info
+                return {
+                  success: true,
+                  data: {
+                    result: result.message || 'Action requires approval',
+                    steps: iteration,
+                    toolsUsed: [...new Set(toolsUsed)],
+                    actions,
+                    requiresApproval: true,
+                    approvalId: result.approvalId,
+                    preview: result.preview
+                  } as any,
+                  tokensUsed: 0
+                }
+              }
               
               toolsUsed.push(functionName)
               actions.push({

@@ -25,10 +25,11 @@ export async function GET(req: NextRequest) {
     const state = Buffer.from(JSON.stringify({ userId: user.id })).toString('base64')
 
     // Build Atlassian OAuth URL (3-legged OAuth)
+    // Using the working Atlassian OAuth format with all required scopes
     const params = new URLSearchParams({
       audience: 'api.atlassian.com',
       client_id: clientId,
-      scope: 'read:jira-work write:jira-work',
+      scope: 'read:jira-work read:jira-user write:jira-work manage:jira-project manage:jira-configuration manage:jira-webhook manage:jira-data-provider',
       redirect_uri: redirectUri,
       state: state,
       response_type: 'code',

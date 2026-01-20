@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { generateRoadmap } from '@/lib/ai'
+import { summarizeNorthStar } from '@/lib/north-star-summarizer'
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,6 +15,32 @@ export async function POST(req: NextRequest) {
 
     const { name, building, skills, experience, networkSize, ideas, funds, hoursPerWeek, goal, integrations } = await req.json()
 
+    // Generate AI summaries for North Star
+    let buildingDescriptionSummary = null
+    let currentGoalSummary = null
+
+    if (building && building.trim()) {
+      try {
+        buildingDescriptionSummary = await summarizeNorthStar(building)
+      } catch (error) {
+        console.error('[Onboarding] Error generating building description summary:', error)
+        buildingDescriptionSummary = building.trim().length > 100
+          ? building.trim().substring(0, 97) + '...'
+          : building.trim()
+      }
+    }
+
+    if (goal && goal.trim()) {
+      try {
+        currentGoalSummary = await summarizeNorthStar(goal)
+      } catch (error) {
+        console.error('[Onboarding] Error generating current goal summary:', error)
+        currentGoalSummary = goal.trim().length > 100
+          ? goal.trim().substring(0, 97) + '...'
+          : goal.trim()
+      }
+    }
+
     // Update user profile with all onboarding data
     await supabaseAdmin
       .from('users')
@@ -21,9 +48,11 @@ export async function POST(req: NextRequest) {
         name: name || user.email?.split('@')[0],
         onboarding_complete: true,
         current_goal: goal,
+        current_goal_summary: currentGoalSummary,
         funds_available: funds || 0,
         hours_per_week: hoursPerWeek || 0,
         building_description: building || null,
+        building_description_summary: buildingDescriptionSummary,
         experience_summary: experience || null,
         network_size: networkSize || null,
         updated_at: new Date().toISOString(),

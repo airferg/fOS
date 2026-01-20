@@ -52,7 +52,7 @@ export abstract class BaseAgent<TInput = any, TOutput = any> implements Agent<TI
     const {
       model = DEFAULT_MODEL,
       temperature = 0.7,
-      maxTokens = 2000,
+      maxTokens = 600, // Optimized for cost efficiency - brief responses only
       responseFormat = 'text'
     } = options
 
@@ -73,7 +73,55 @@ export abstract class BaseAgent<TInput = any, TOutput = any> implements Agent<TI
 
       return { content, tokensUsed }
     } catch (error: any) {
-      throw new Error(`OpenAI API error: ${error.message}`)
+      // Extract error details (OpenAI SDK error structure)
+      const errorMessage = error.message || error.error?.message || 'Unknown error'
+      const errorType = error.type || error.error?.type || 'unknown'
+      const errorCode = error.code || error.status || error.statusCode || error.error?.code || 'unknown'
+      
+      // Log full error details for debugging
+      console.error('[BaseAgent] OpenAI API error details:', {
+        message: errorMessage,
+        type: errorType,
+        code: errorCode,
+        status: error.status,
+        statusCode: error.statusCode,
+        model,
+        responseFormat,
+        fullError: error,
+        errorResponse: error.response?.data,
+        errorObject: error.error,
+        stack: error.stack?.substring(0, 500) // First 500 chars of stack
+      })
+      
+      // Build user-friendly error message based on error type
+      let detailedMessage: string
+      
+      if (errorCode === 'insufficient_quota' || errorType === 'insufficient_quota') {
+        detailedMessage = `OpenAI API quota exceeded. Your account has run out of credits or hit usage limits. Please check your OpenAI billing dashboard (https://platform.openai.com/account/billing) to add credits or upgrade your plan.`
+      } else if (errorCode === 'rate_limit_exceeded' || errorType === 'rate_limit_exceeded' || error.status === 429) {
+        detailedMessage = `OpenAI API rate limit exceeded. Too many requests in a short period. Please wait a moment and try again.`
+      } else if (errorCode === 'invalid_api_key' || errorType === 'invalid_api_key') {
+        detailedMessage = `OpenAI API key is invalid. Please check your OPENAI_API_KEY environment variable.`
+      } else if (errorCode === 'model_not_found' || errorType === 'model_not_found') {
+        detailedMessage = `OpenAI model not found. The model "${model}" may not be available. Please check your OpenAI account and model availability.`
+      } else {
+        // Generic error with details
+        detailedMessage = `OpenAI API error`
+        if (errorCode && errorCode !== 'unknown') {
+          detailedMessage += ` (code: ${errorCode})`
+        }
+        if (errorType && errorType !== 'unknown') {
+          detailedMessage += ` (type: ${errorType})`
+        }
+        detailedMessage += `: ${errorMessage}`
+        
+        // Include additional context if available
+        if (error.error?.param) {
+          detailedMessage += ` (param: ${error.error.param})`
+        }
+      }
+      
+      throw new Error(detailedMessage)
     }
   }
 
@@ -182,7 +230,14 @@ export async function executeAgent<TInput = any, TOutput = any>(
   try {
     // Execute the agent
     const startTime = Date.now()
-    const result = await agent.execute(input, userId)
+    
+    // For TaskExecutorAgent, include taskId in input for tool execution tracking
+    let agentInput = input as any
+    if (agentId === 'task-executor' && taskId) {
+      agentInput = { ...input as any, taskId }
+    }
+    
+    const result = await agent.execute(agentInput, userId)
     const duration = Date.now() - startTime
 
     // Update task record with results (if task was created)

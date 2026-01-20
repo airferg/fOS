@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
           access_token: tokenData.access_token,
           refresh_token: tokenData.refresh_token || null,
           token_expires_at: expiresAt,
-          scopes: ['read:jira-work', 'write:jira-work'],
+          scopes: tokenData.scope ? tokenData.scope.split(' ') : ['read:jira-work', 'read:jira-user', 'write:jira-work', 'manage:jira-project', 'manage:jira-configuration', 'manage:jira-webhook', 'manage:jira-data-provider'],
           metadata: {
             cloud_id: tokenData.scope, // Store cloud ID if available
           },

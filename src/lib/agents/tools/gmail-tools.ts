@@ -97,11 +97,52 @@ toolRegistry.register({
   }
 })
 
+// Helper: Check if email requires approval
+async function requiresApproval(params: any, userId: string): Promise<{ requires: boolean; reason?: string; approvalType?: string }> {
+  const { to, subject, body } = params
+  const emailText = `${subject} ${body}`.toLowerCase()
+  
+  // Check for investor-related keywords
+  const investorKeywords = ['investor', 'investment', 'funding', 'fundraise', 'runway', 'burn rate', 'valuation', 'term sheet', 'cap table']
+  const hasInvestorContent = investorKeywords.some(keyword => emailText.includes(keyword))
+  
+  // Check if sending to multiple recipients (bulk)
+  const recipients = to.split(',').map((e: string) => e.trim())
+  const isBulkEmail = recipients.length > 1
+  
+  // Check if it's an investor update email (from agent)
+  const isInvestorUpdate = subject?.toLowerCase().includes('update') && (hasInvestorContent || emailText.includes('update'))
+  
+  if (hasInvestorContent || isInvestorUpdate) {
+    return { 
+      requires: true, 
+      reason: 'Investor-related emails require approval before sending',
+      approvalType: 'investor_update'
+    }
+  }
+  
+  if (isBulkEmail) {
+    return { 
+      requires: true, 
+      reason: 'Bulk emails require approval before sending',
+      approvalType: 'bulk_action'
+    }
+  }
+  
+  // Default: require approval for all emails (safety first)
+  // Users can modify this behavior if needed
+  return { 
+    requires: true, 
+    reason: 'All emails require approval for safety',
+    approvalType: 'send_email'
+  }
+}
+
 // Tool: Send email
 toolRegistry.register({
   id: 'send_email',
   name: 'Send Email',
-  description: 'Sends an email via Gmail. Use this when the user explicitly asks to send an email. Always use this for sending, not draft_email, unless specifically asked to draft only.',
+  description: 'Sends an email via Gmail. Use this when the user explicitly asks to send an email. Always use this for sending, not draft_email, unless specifically asked to draft only. NOTE: This will create an approval request for sensitive emails (investor updates, bulk emails).',
   parameters: {
     type: 'object',
     properties: {
@@ -124,11 +165,15 @@ toolRegistry.register({
       bcc: {
         type: 'string',
         description: 'BCC recipients (comma-separated, optional)'
+      },
+      skipApproval: {
+        type: 'boolean',
+        description: 'Skip approval (only for non-sensitive emails, defaults to false)'
       }
     },
     required: ['to', 'subject', 'body']
   },
-  execute: async (params: any, userId: string) => {
+  execute: async (params: any, userId: string, metadata?: { agentTaskId?: string }) => {
     const token = await getIntegrationToken(userId, 'gmail')
     if (!token) {
       // Return a helpful error that the AI can understand and work around
@@ -155,6 +200,69 @@ toolRegistry.register({
       ]
 
       const email = emailLines.join('\n')
+
+      // Check if approval is required
+      const approvalCheck = await requiresApproval(params, userId)
+      
+      // If approval is required and not skipped, create approval request
+      if (approvalCheck.requires && !params.skipApproval) {
+        try {
+          const { createServerSupabaseClient } = await import('@/lib/supabase-server')
+          const supabase = await createServerSupabaseClient()
+          
+          const { data: approval, error: approvalError } = await supabase
+            .from('pending_approvals')
+              .insert({
+              user_id: userId,
+              agent_task_id: metadata?.agentTaskId || null,
+              approval_type: approvalCheck.approvalType || 'send_email',
+              action_type: 'send_email',
+              title: `Send email: ${params.subject}`,
+              description: `To: ${to}${cc ? `, CC: ${cc}` : ''}${bcc ? `, BCC: ${bcc}` : ''}`,
+              preview_data: {
+                to,
+                cc: cc || null,
+                bcc: bcc || null,
+                subject: params.subject,
+                body: params.body,
+                recipientsCount: to.split(',').length
+              },
+              action_data: {
+                tool: 'send_email',
+                params: {
+                  to,
+                  cc: cc || null,
+                  bcc: bcc || null,
+                  subject: params.subject,
+                  body: params.body
+                }
+              },
+              status: 'pending',
+              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+            })
+            .select()
+            .single()
+
+          if (approvalError) {
+            console.error('[Gmail Tools] Error creating approval:', approvalError)
+            // Fall through to send anyway if approval creation fails (shouldn't happen)
+          } else {
+            return {
+              requiresApproval: true,
+              approvalId: approval.id,
+              message: `Email requires approval before sending. Approval request created. Please review and approve in the dashboard.`,
+              preview: {
+                to,
+                subject: params.subject,
+                body: params.body.substring(0, 200) + (params.body.length > 200 ? '...' : '')
+              }
+            }
+          }
+        } catch (error: any) {
+          console.error('[Gmail Tools] Error creating approval request:', error)
+          // Fall through to send anyway if approval creation fails
+        }
+      }
 
       // Encode as base64url
       const encodedEmail = Buffer.from(email)
