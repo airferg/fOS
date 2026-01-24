@@ -27,10 +27,10 @@ export default function IntegrationActivityFeed({ activity, loading, isOpen, onC
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'urgent': return '🔥'
-      case 'important': return '⚠'
-      case 'low': return 'ℹ'
-      default: return 'ℹ'
+      case 'urgent': return ''
+      case 'important': return ''
+      case 'low': return ''
+      default: return ''
     }
   }
 
@@ -59,19 +59,7 @@ export default function IntegrationActivityFeed({ activity, loading, isOpen, onC
   }
 
   const getIntegrationIcon = (source: string) => {
-    const icons: Record<string, string> = {
-      'slack': '💬',
-      'gmail': '📧',
-      'google-calendar': '📅',
-      'google_calendar': '📅',
-      'github': '🐙',
-      'stripe': '💳',
-      'calendly': '🗓️',
-      'zoom': '🎥',
-      'discord': '🎮',
-      'notion': '📝',
-    }
-    return icons[source.toLowerCase()] || '🔌'
+    return ''
   }
 
   return (

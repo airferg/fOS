@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
@@ -229,23 +229,42 @@ export default function AuthCallbackPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
         <div className="text-center">
-          <h1 className="text-xl font-medium text-black mb-2">Authentication Error</h1>
-          <p className="text-sm text-zinc-600 mb-4">{error}</p>
-          <p className="text-xs text-zinc-500">Redirecting to login...</p>
+          <h1 className="text-xl font-medium text-black dark:text-white mb-2">Authentication Error</h1>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4 leading-relaxed">{error}</p>
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Redirecting to login...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black mx-auto mb-4"></div>
-        <p className="text-sm text-zinc-600">Completing sign in...</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black dark:border-white mx-auto mb-4"></div>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Completing sign in...</p>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black dark:border-white mx-auto mb-4"></div>
+        <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Loading...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <AuthCallbackContent />
+    </Suspense>
   )
 }
 

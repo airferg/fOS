@@ -263,7 +263,7 @@ async function checkCompletedTasksForEvent(userId: string, event: any): Promise<
         
         // Check if task mentions the meeting title or attendee
         const mentionsTitle = eventTitle && (allTaskText.includes(eventTitle.substring(0, 20)) || allTaskText.includes(eventTitle.substring(0, 10)))
-        const mentionsAttendee = attendeeNames.some(name => {
+        const mentionsAttendee = attendeeNames.some((name: string | null | undefined) => {
           if (!name) return false
           const namePart = name.split('@')[0].split('.')[0] // Get first name part
           return namePart.length > 2 && allTaskText.includes(namePart)
@@ -332,7 +332,7 @@ async function generateProactiveMessage(
   const connectedList = Array.from(connectedIntegrations).join(', ')
   const missingIntegrations: string[] = []
 
-  const systemPrompt = `You are FounderOS, an AI co-founder for startup founders. You monitor their startup and proactively suggest actions.
+  const systemPrompt = `You are Hydra, an AI co-founder for startup founders. You monitor their startup and proactively suggest actions.
 
 Your role:
 - Monitor changes in budget, calendar, messages, roadmap, contacts
@@ -471,7 +471,13 @@ Keep messages under 50 words. Maximum 3 sentences. Be direct and actionable.`
       suggestedActions: filteredActions,
     }
   } catch (error: any) {
-    console.error('Error generating proactive message:', error)
+    // Handle OpenAI quota errors gracefully
+    if (error.status === 429 && (error.code === 'insufficient_quota' || error.type === 'insufficient_quota')) {
+      console.log(`[Proactive Engine] ⚠️  OpenAI quota exceeded. Skipping proactive message generation.`)
+      return null
+    }
+    // Log other errors but don't crash
+    console.error('[Proactive Engine] Error generating proactive message:', error.message || error)
     return null
   }
 }

@@ -71,7 +71,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { id, name, email, phone, company, position, description, linkedin_url, x, facebook, instagram, university, role, tags, helpful_for, connection_strength, stage } = await req.json()
+    const { id, name, email, phone, company, position, description, linkedin_url, x, facebook, instagram, university, role, tags, helpful_for, connection_strength, stage, avatar_url, calendly_url, is_founder } = await req.json()
 
     if (!id) {
       return NextResponse.json({ error: 'Contact ID is required' }, { status: 400 })
@@ -103,6 +103,9 @@ export async function PATCH(req: NextRequest) {
     if (helpful_for !== undefined) contactData.helpful_for = helpful_for?.trim() || null
     if (description !== undefined && !helpful_for) contactData.helpful_for = description?.trim() || null
     if (linkedin_url !== undefined) contactData.linkedin_url = linkedin_url?.trim() || null
+    if (avatar_url !== undefined) contactData.avatar_url = avatar_url?.trim() || null
+    if (calendly_url !== undefined) contactData.calendly_url = calendly_url?.trim() || null
+    if (is_founder !== undefined) contactData.is_founder = is_founder
     if (tags !== undefined) contactData.tags = tags || []
     if (connection_strength !== undefined) contactData.connection_strength = connection_strength
     if (stage !== undefined) contactData.stage = stage

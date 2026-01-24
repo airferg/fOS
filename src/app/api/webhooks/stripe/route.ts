@@ -42,32 +42,42 @@ export async function POST(req: NextRequest) {
       id: event.id 
     })
 
-    // Handle invoice.paid events
-    if (event.type === 'invoice.paid') {
-      console.log('[Stripe Webhook] Invoice paid:', {
-        invoice_id: event.data.object.id,
-        customer: event.data.object.customer,
-        amount: event.data.object.amount_paid,
-      })
-
-      // TODO: Process invoice paid event
-      // You can save to database, trigger actions, send notifications, etc.
+    // Get user ID from customer email or metadata
+    // Stripe webhooks should include user_id in metadata when events are created
+    const customerId = event.data.object.customer
+    const customerEmail = event.data.object.customer_email || event.data.object.billing_details?.email
+    
+    // Find user by email or Stripe customer ID
+    const { createServerSupabaseClient } = await import('@/lib/supabase-server')
+    const supabase = await createServerSupabaseClient()
+    
+    let userId: string | null = null
+    
+    if (customerEmail) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', customerEmail)
+        .maybeSingle()
+      
+      userId = userData?.id || null
     }
 
-    // Handle customer.created events
-    if (event.type === 'customer.created') {
-      console.log('[Stripe Webhook] Customer created:', {
-        customer_id: event.data.object.id,
-        email: event.data.object.email,
-      })
-
-      // TODO: Process customer created event
+    if (!userId) {
+      console.log('[Stripe Webhook] Could not find user for customer:', customerId)
+      // Still return success to avoid retries - the event can be processed later
+      return NextResponse.json({ received: true })
     }
 
-    // Handle other payment events
-    if (event.type.startsWith('payment_intent.')) {
-      console.log('[Stripe Webhook] Payment intent event:', event.type, event.data.object)
-    }
+    // Process webhook event using centralized handler
+    const { processWebhookEvent } = await import('@/lib/integrations/webhook-event-handler')
+    
+    await processWebhookEvent(
+      userId,
+      'stripe',
+      event.type,
+      event.data.object
+    )
 
     return NextResponse.json({ received: true })
   } catch (error: any) {

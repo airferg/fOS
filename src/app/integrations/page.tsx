@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -18,48 +18,48 @@ interface Integration {
 // Integration categories for better organization
 const integrationCategories = {
   'Communication & Team': [
-    { id: 'gmail', name: 'Gmail', description: 'Send and manage emails, automate outreach campaigns', icon: '📧', sectionCategory: 'Email' },
-    { id: 'outlook', name: 'Outlook', description: 'Microsoft email integration for enterprise workflows', icon: '📨', sectionCategory: 'Email' },
-    { id: 'slack', name: 'Slack', description: 'Team messaging and notifications for updates', icon: '💬', sectionCategory: 'Communication' },
-    { id: 'discord', name: 'Discord', description: 'Community management and team coordination', icon: '🎮', sectionCategory: 'Communication' },
-    { id: 'google-calendar', name: 'Google Calendar', description: 'Schedule meetings and sync your availability', icon: '📅', sectionCategory: 'Calendar' },
-    { id: 'calendly', name: 'Calendly', description: 'Automated scheduling links for customer meetings', icon: '🗓️', sectionCategory: 'Scheduling' },
-    { id: 'zoom', name: 'Zoom', description: 'Video conferencing and virtual meetings', icon: '🎥', sectionCategory: 'Video' },
-    { id: 'intercom', name: 'Intercom', description: 'Customer messaging and support platform', icon: '💬', sectionCategory: 'Support' },
-    { id: 'zendesk', name: 'Zendesk', description: 'Customer service and ticketing system', icon: '🎫', sectionCategory: 'Support' },
+    { id: 'gmail', name: 'Gmail', description: 'Send and manage emails, automate outreach campaigns', icon: '', sectionCategory: 'Email' },
+    { id: 'outlook', name: 'Outlook', description: 'Microsoft email integration for enterprise workflows', icon: '', sectionCategory: 'Email' },
+    { id: 'slack', name: 'Slack', description: 'Team messaging and notifications for updates', icon: '', sectionCategory: 'Communication' },
+    { id: 'discord', name: 'Discord', description: 'Community management and team coordination', icon: '', sectionCategory: 'Communication' },
+    { id: 'google-calendar', name: 'Google Calendar', description: 'Schedule meetings and sync your availability', icon: '', sectionCategory: 'Calendar' },
+    { id: 'calendly', name: 'Calendly', description: 'Automated scheduling links for customer meetings', icon: '', sectionCategory: 'Scheduling' },
+    { id: 'zoom', name: 'Zoom', description: 'Video conferencing and virtual meetings', icon: '', sectionCategory: 'Video' },
+    { id: 'intercom', name: 'Intercom', description: 'Customer messaging and support platform', icon: '', sectionCategory: 'Support' },
+    { id: 'zendesk', name: 'Zendesk', description: 'Customer service and ticketing system', icon: '', sectionCategory: 'Support' },
   ],
   'Product & Docs': [
-    { id: 'notion', name: 'Notion', description: 'Sync tasks, documents, and knowledge base', icon: '📝', sectionCategory: 'Productivity' },
-    { id: 'google-docs', name: 'Google Docs', description: 'Create and share documents automatically', icon: '📄', sectionCategory: 'Documents' },
-    { id: 'coda', name: 'Coda', description: 'All-in-one doc for teams and workflows', icon: '📋', sectionCategory: 'Productivity' },
-    { id: 'productboard', name: 'ProductBoard', description: 'Product roadmaps and feature prioritization', icon: '🎯', sectionCategory: 'Product' },
-    { id: 'linear', name: 'Linear', description: 'Issue tracking and project management', icon: '⚡', sectionCategory: 'Project Management' },
-    { id: 'jira', name: 'Jira', description: 'Agile project management for dev teams', icon: '🔷', sectionCategory: 'Project Management' },
-    { id: 'asana', name: 'Asana', description: 'Task and project management platform', icon: '✓', sectionCategory: 'Project Management' },
-    { id: 'airtable', name: 'Airtable', description: 'Flexible database for tracking everything', icon: '🗂️', sectionCategory: 'Database' },
+    { id: 'notion', name: 'Notion', description: 'Sync tasks, documents, and knowledge base', icon: '', sectionCategory: 'Productivity' },
+    { id: 'google-docs', name: 'Google Docs', description: 'Create and share documents automatically', icon: '', sectionCategory: 'Documents' },
+    { id: 'coda', name: 'Coda', description: 'All-in-one doc for teams and workflows', icon: '', sectionCategory: 'Productivity' },
+    { id: 'productboard', name: 'ProductBoard', description: 'Product roadmaps and feature prioritization', icon: '', sectionCategory: 'Product' },
+    { id: 'linear', name: 'Linear', description: 'Issue tracking and project management', icon: '', sectionCategory: 'Project Management' },
+    { id: 'jira', name: 'Jira', description: 'Agile project management for dev teams', icon: '', sectionCategory: 'Project Management' },
+    { id: 'asana', name: 'Asana', description: 'Task and project management platform', icon: '', sectionCategory: 'Project Management' },
+    { id: 'airtable', name: 'Airtable', description: 'Flexible database for tracking everything', icon: '', sectionCategory: 'Database' },
   ],
   'Development': [
-    { id: 'github', name: 'GitHub', description: 'Code repository and collaboration platform', icon: '🐙', sectionCategory: 'Development' },
-    { id: 'gitlab', name: 'GitLab', description: 'DevOps platform for complete CI/CD', icon: '🦊', sectionCategory: 'Development' },
-    { id: 'vercel', name: 'Vercel', description: 'Deploy and host your web applications', icon: '▲', sectionCategory: 'Deployment' },
+    { id: 'github', name: 'GitHub', description: 'Code repository and collaboration platform', icon: '', sectionCategory: 'Development' },
+    { id: 'gitlab', name: 'GitLab', description: 'DevOps platform for complete CI/CD', icon: '', sectionCategory: 'Development' },
+    { id: 'vercel', name: 'Vercel', description: 'Deploy and host your web applications', icon: '', sectionCategory: 'Deployment' },
   ],
   'Forms & Surveys': [
-    { id: 'tally', name: 'Tally', description: 'Create beautiful forms and collect responses', icon: '📊', sectionCategory: 'Forms' },
-    { id: 'typeform', name: 'Typeform', description: 'Interactive forms and surveys for user research', icon: '📝', sectionCategory: 'Forms' },
-    { id: 'google-forms', name: 'Google Forms', description: 'Simple surveys and data collection', icon: '📋', sectionCategory: 'Forms' },
+    { id: 'tally', name: 'Tally', description: 'Create beautiful forms and collect responses', icon: '', sectionCategory: 'Forms' },
+    { id: 'typeform', name: 'Typeform', description: 'Interactive forms and surveys for user research', icon: '', sectionCategory: 'Forms' },
+    { id: 'google-forms', name: 'Google Forms', description: 'Simple surveys and data collection', icon: '', sectionCategory: 'Forms' },
   ],
   'Marketing & Analytics': [
-    { id: 'linkedin', name: 'LinkedIn', description: 'Professional networking and outreach', icon: '💼', sectionCategory: 'Networking' },
-    { id: 'twitter', name: 'Twitter/X', description: 'Social media engagement and content sharing', icon: '🐦', sectionCategory: 'Social' },
-    { id: 'google-analytics', name: 'Google Analytics', description: 'Website traffic and user behavior insights', icon: '📈', sectionCategory: 'Analytics' },
-    { id: 'mixpanel', name: 'Mixpanel', description: 'Product analytics and user tracking', icon: '📊', sectionCategory: 'Analytics' },
-    { id: 'amplitude', name: 'Amplitude', description: 'Behavioral analytics for product teams', icon: '📉', sectionCategory: 'Analytics' },
-    { id: 'mailchimp', name: 'Mailchimp', description: 'Email marketing and campaign automation', icon: '🐵', sectionCategory: 'Marketing' },
-    { id: 'hubspot', name: 'HubSpot', description: 'All-in-one CRM and marketing platform', icon: '🧲', sectionCategory: 'CRM' },
+    { id: 'linkedin', name: 'LinkedIn', description: 'Professional networking and outreach', icon: '', sectionCategory: 'Networking' },
+    { id: 'twitter', name: 'Twitter/X', description: 'Social media engagement and content sharing', icon: '', sectionCategory: 'Social' },
+    { id: 'google-analytics', name: 'Google Analytics', description: 'Website traffic and user behavior insights', icon: '', sectionCategory: 'Analytics' },
+    { id: 'mixpanel', name: 'Mixpanel', description: 'Product analytics and user tracking', icon: '', sectionCategory: 'Analytics' },
+    { id: 'amplitude', name: 'Amplitude', description: 'Behavioral analytics for product teams', icon: '', sectionCategory: 'Analytics' },
+    { id: 'mailchimp', name: 'Mailchimp', description: 'Email marketing and campaign automation', icon: '', sectionCategory: 'Marketing' },
+    { id: 'hubspot', name: 'HubSpot', description: 'All-in-one CRM and marketing platform', icon: '', sectionCategory: 'CRM' },
   ],
   'Finance & Payments': [
-    { id: 'stripe', name: 'Stripe', description: 'Payment processing and billing automation', icon: '💳', sectionCategory: 'Payments' },
-    { id: 'quickbooks', name: 'QuickBooks', description: 'Financial management and bookkeeping', icon: '💰', sectionCategory: 'Accounting' },
+    { id: 'stripe', name: 'Stripe', description: 'Payment processing and billing automation', icon: '', sectionCategory: 'Payments' },
+    { id: 'quickbooks', name: 'QuickBooks', description: 'Financial management and bookkeeping', icon: '', sectionCategory: 'Accounting' },
   ],
 }
 
@@ -70,7 +70,7 @@ const integrations: Integration[] = Object.values(integrationCategories).flat().
   connected: false,
 }))
 
-export default function IntegrationsPage() {
+function IntegrationsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState('')
@@ -327,7 +327,7 @@ export default function IntegrationsPage() {
       <nav className="bg-white dark:bg-zinc-950 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 dark:border-zinc-800">
         <div className="mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center">
-            <img src="/fOS.png" alt="fOS" className="h-8 w-auto" />
+            <img src="/hydra.png" alt="Hydra" className="h-8 w-auto" />
           </Link>
           <div className="flex items-center gap-6 text-sm">
             <Link href="/dashboard" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
@@ -440,7 +440,7 @@ export default function IntegrationsPage() {
                           {integration.description}
                         </p>
 
-                        {integration.comingSoon ? (
+                        {(integration as Integration & { comingSoon?: boolean }).comingSoon ? (
                           <button
                             disabled
                             className="w-full py-2 bg-zinc-100 text-zinc-400 text-sm font-medium rounded cursor-not-allowed"
@@ -498,7 +498,6 @@ export default function IntegrationsPage() {
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-3">
-                          <span className="text-3xl">{integration.icon}</span>
                           <div>
                             <h3 className="text-base font-semibold text-black dark:text-white">{integration.name}</h3>
                             <span className="text-xs text-zinc-500">{integration.category}</span>
@@ -516,7 +515,7 @@ export default function IntegrationsPage() {
                         {integration.description}
                       </p>
 
-                      {integration.comingSoon ? (
+                      {(integration as Integration & { comingSoon?: boolean }).comingSoon ? (
                         <button
                           disabled
                           className="w-full py-2 bg-zinc-100 text-zinc-400 text-sm font-medium rounded cursor-not-allowed"
@@ -554,5 +553,21 @@ export default function IntegrationsPage() {
         )}
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black dark:border-white"></div>
+    </div>
+  )
+}
+
+export default function IntegrationsPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <IntegrationsContent />
+    </Suspense>
   )
 }

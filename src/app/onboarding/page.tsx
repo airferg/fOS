@@ -5,39 +5,39 @@ import { useRouter } from 'next/navigation'
 
 // Import integrations list from integrations page
 const integrations = [
-  { id: 'gmail', name: 'Gmail', category: 'Email', description: 'Send and manage emails, automate outreach campaigns', icon: '📧' },
-  { id: 'outlook', name: 'Outlook', category: 'Email', description: 'Microsoft email integration for enterprise workflows', icon: '📨' },
-  { id: 'slack', name: 'Slack', category: 'Communication', description: 'Team messaging and notifications for updates', icon: '💬' },
-  { id: 'discord', name: 'Discord', category: 'Communication', description: 'Community management and team coordination', icon: '🎮' },
-  { id: 'google-calendar', name: 'Google Calendar', category: 'Calendar', description: 'Schedule meetings and sync your availability', icon: '📅' },
-  { id: 'calendly', name: 'Calendly', category: 'Scheduling', description: 'Automated scheduling links for customer meetings', icon: '🗓️' },
-  { id: 'zoom', name: 'Zoom', category: 'Video', description: 'Video conferencing and virtual meetings', icon: '🎥' },
-  { id: 'fireflies', name: 'Fireflies.ai', category: 'Transcription', description: 'AI meeting transcription and note-taking', icon: '🎙️' },
-  { id: 'notion', name: 'Notion', category: 'Productivity', description: 'Sync tasks, documents, and knowledge base', icon: '📝' },
-  { id: 'google-docs', name: 'Google Docs', category: 'Documents', description: 'Create and share documents automatically', icon: '📄' },
-  { id: 'airtable', name: 'Airtable', category: 'Database', description: 'Flexible database for tracking everything', icon: '🗂️' },
-  { id: 'coda', name: 'Coda', category: 'Productivity', description: 'All-in-one doc for teams and workflows', icon: '📋' },
-  { id: 'tally', name: 'Tally', category: 'Forms', description: 'Create beautiful forms and collect responses', icon: '📊' },
-  { id: 'typeform', name: 'Typeform', category: 'Forms', description: 'Interactive forms and surveys for user research', icon: '📝' },
-  { id: 'google-forms', name: 'Google Forms', category: 'Forms', description: 'Simple surveys and data collection', icon: '📋' },
-  { id: 'productboard', name: 'ProductBoard', category: 'Product', description: 'Product roadmaps and feature prioritization', icon: '🎯' },
-  { id: 'linear', name: 'Linear', category: 'Project Management', description: 'Issue tracking and project management', icon: '⚡' },
-  { id: 'jira', name: 'Jira', category: 'Project Management', description: 'Agile project management for dev teams', icon: '🔷' },
-  { id: 'asana', name: 'Asana', category: 'Project Management', description: 'Task and project management platform', icon: '✓' },
-  { id: 'github', name: 'GitHub', category: 'Development', description: 'Code repository and collaboration platform', icon: '🐙' },
-  { id: 'gitlab', name: 'GitLab', category: 'Development', description: 'DevOps platform for complete CI/CD', icon: '🦊' },
-  { id: 'vercel', name: 'Vercel', category: 'Deployment', description: 'Deploy and host your web applications', icon: '▲' },
-  { id: 'linkedin', name: 'LinkedIn', category: 'Networking', description: 'Professional networking and outreach', icon: '💼' },
-  { id: 'twitter', name: 'Twitter/X', category: 'Social', description: 'Social media engagement and content sharing', icon: '🐦' },
-  { id: 'google-analytics', name: 'Google Analytics', category: 'Analytics', description: 'Website traffic and user behavior insights', icon: '📈' },
-  { id: 'mixpanel', name: 'Mixpanel', category: 'Analytics', description: 'Product analytics and user tracking', icon: '📊' },
-  { id: 'amplitude', name: 'Amplitude', category: 'Analytics', description: 'Behavioral analytics for product teams', icon: '📉' },
-  { id: 'stripe', name: 'Stripe', category: 'Payments', description: 'Payment processing and billing automation', icon: '💳' },
-  { id: 'quickbooks', name: 'QuickBooks', category: 'Accounting', description: 'Financial management and bookkeeping', icon: '💰' },
-  { id: 'intercom', name: 'Intercom', category: 'Support', description: 'Customer messaging and support platform', icon: '💬' },
-  { id: 'zendesk', name: 'Zendesk', category: 'Support', description: 'Customer service and ticketing system', icon: '🎫' },
-  { id: 'mailchimp', name: 'Mailchimp', category: 'Marketing', description: 'Email marketing and campaign automation', icon: '🐵' },
-  { id: 'hubspot', name: 'HubSpot', category: 'CRM', description: 'All-in-one CRM and marketing platform', icon: '🧲' },
+  { id: 'gmail', name: 'Gmail', category: 'Email', description: 'Send and manage emails, automate outreach campaigns', icon: '' },
+  { id: 'outlook', name: 'Outlook', category: 'Email', description: 'Microsoft email integration for enterprise workflows', icon: '' },
+  { id: 'slack', name: 'Slack', category: 'Communication', description: 'Team messaging and notifications for updates', icon: '' },
+  { id: 'discord', name: 'Discord', category: 'Communication', description: 'Community management and team coordination', icon: '' },
+  { id: 'google-calendar', name: 'Google Calendar', category: 'Calendar', description: 'Schedule meetings and sync your availability', icon: '' },
+  { id: 'calendly', name: 'Calendly', category: 'Scheduling', description: 'Automated scheduling links for customer meetings', icon: '' },
+  { id: 'zoom', name: 'Zoom', category: 'Video', description: 'Video conferencing and virtual meetings', icon: '' },
+  { id: 'fireflies', name: 'Fireflies.ai', category: 'Transcription', description: 'AI meeting transcription and note-taking', icon: '' },
+  { id: 'notion', name: 'Notion', category: 'Productivity', description: 'Sync tasks, documents, and knowledge base', icon: '' },
+  { id: 'google-docs', name: 'Google Docs', category: 'Documents', description: 'Create and share documents automatically', icon: '' },
+  { id: 'airtable', name: 'Airtable', category: 'Database', description: 'Flexible database for tracking everything', icon: '' },
+  { id: 'coda', name: 'Coda', category: 'Productivity', description: 'All-in-one doc for teams and workflows', icon: '' },
+  { id: 'tally', name: 'Tally', category: 'Forms', description: 'Create beautiful forms and collect responses', icon: '' },
+  { id: 'typeform', name: 'Typeform', category: 'Forms', description: 'Interactive forms and surveys for user research', icon: '' },
+  { id: 'google-forms', name: 'Google Forms', category: 'Forms', description: 'Simple surveys and data collection', icon: '' },
+  { id: 'productboard', name: 'ProductBoard', category: 'Product', description: 'Product roadmaps and feature prioritization', icon: '' },
+  { id: 'linear', name: 'Linear', category: 'Project Management', description: 'Issue tracking and project management', icon: '' },
+  { id: 'jira', name: 'Jira', category: 'Project Management', description: 'Agile project management for dev teams', icon: '' },
+  { id: 'asana', name: 'Asana', category: 'Project Management', description: 'Task and project management platform', icon: '' },
+  { id: 'github', name: 'GitHub', category: 'Development', description: 'Code repository and collaboration platform', icon: '' },
+  { id: 'gitlab', name: 'GitLab', category: 'Development', description: 'DevOps platform for complete CI/CD', icon: '' },
+  { id: 'vercel', name: 'Vercel', category: 'Deployment', description: 'Deploy and host your web applications', icon: '' },
+  { id: 'linkedin', name: 'LinkedIn', category: 'Networking', description: 'Professional networking and outreach', icon: '' },
+  { id: 'twitter', name: 'Twitter/X', category: 'Social', description: 'Social media engagement and content sharing', icon: '' },
+  { id: 'google-analytics', name: 'Google Analytics', category: 'Analytics', description: 'Website traffic and user behavior insights', icon: '' },
+  { id: 'mixpanel', name: 'Mixpanel', category: 'Analytics', description: 'Product analytics and user tracking', icon: '' },
+  { id: 'amplitude', name: 'Amplitude', category: 'Analytics', description: 'Behavioral analytics for product teams', icon: '' },
+  { id: 'stripe', name: 'Stripe', category: 'Payments', description: 'Payment processing and billing automation', icon: '' },
+  { id: 'quickbooks', name: 'QuickBooks', category: 'Accounting', description: 'Financial management and bookkeeping', icon: '' },
+  { id: 'intercom', name: 'Intercom', category: 'Support', description: 'Customer messaging and support platform', icon: '' },
+  { id: 'zendesk', name: 'Zendesk', category: 'Support', description: 'Customer service and ticketing system', icon: '' },
+  { id: 'mailchimp', name: 'Mailchimp', category: 'Marketing', description: 'Email marketing and campaign automation', icon: '' },
+  { id: 'hubspot', name: 'HubSpot', category: 'CRM', description: 'All-in-one CRM and marketing platform', icon: '' },
 ]
 
 interface OnboardingData {
@@ -58,13 +58,13 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  
+
   // Initialize integrations object with all integrations set to false
   const initialIntegrations: Record<string, boolean> = {}
   integrations.forEach(integration => {
     initialIntegrations[integration.id] = false
   })
-  
+
   const [data, setData] = useState<OnboardingData>({
     name: '',
     building: '',
@@ -187,11 +187,11 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-medium text-black mb-2">Welcome to FounderOS</h2>
-              <p className="text-zinc-600">Let's get to know you and set up your workspace.</p>
+              <h2 className="text-2xl font-medium text-black dark:text-white mb-2">Welcome to Hydra</h2>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Let's get to know you and set up your workspace.</p>
             </div>
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-black mb-2">
+              <label htmlFor="name" className="block text-xs font-medium text-black dark:text-white mb-2">
                 What's your name?
               </label>
               <input
@@ -199,7 +199,7 @@ export default function OnboardingPage() {
                 type="text"
                 value={data.name}
                 onChange={(e) => setData({ ...data, name: e.target.value })}
-                className="w-full px-4 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white text-xs"
                 placeholder="John Doe"
               />
             </div>
@@ -210,15 +210,15 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-medium text-black mb-2">What are you building?</h2>
-              <p className="text-zinc-600">Tell us about your startup or project.</p>
+              <h2 className="text-2xl font-medium text-black dark:text-white mb-2">What are you building?</h2>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Tell us about your startup or project.</p>
             </div>
             <div>
               <textarea
                 value={data.building}
                 onChange={(e) => setData({ ...data, building: e.target.value })}
                 rows={6}
-                className="w-full px-4 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-2 focus:ring-black resize-none"
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white resize-none text-xs"
                 placeholder="e.g., An AI-powered task management tool for remote teams that helps prioritize work based on impact..."
               />
             </div>
@@ -229,8 +229,8 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-medium text-black mb-2">Your Skills</h2>
-              <p className="text-zinc-600">What are you good at? Add your key skills.</p>
+              <h2 className="text-2xl font-medium text-black dark:text-white mb-2">Your Skills</h2>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">What are you good at? Add your key skills.</p>
             </div>
             <div className="space-y-3">
               <div className="flex gap-2">
@@ -238,12 +238,12 @@ export default function OnboardingPage() {
                   id="skill-input"
                   type="text"
                   onKeyPress={(e) => e.key === 'Enter' && addSkill()}
-                  className="flex-1 px-4 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
+                  className="flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white text-xs"
                   placeholder="e.g., Product Design, Marketing, Engineering"
                 />
                 <button
                   onClick={addSkill}
-                  className="px-4 py-2 bg-black text-white rounded hover:bg-zinc-800 transition-colors"
+                  className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors text-xs"
                 >
                   Add
                 </button>
@@ -253,12 +253,12 @@ export default function OnboardingPage() {
                   {data.skills.map((skill, index) => (
                     <span
                       key={index}
-                      className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-100 rounded-full text-sm"
+                      className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-full text-xs text-black dark:text-white"
                     >
                       {skill}
                       <button
                         onClick={() => removeSkill(index)}
-                        className="text-zinc-500 hover:text-black"
+                        className="text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                       >
                         ×
                       </button>
@@ -274,15 +274,15 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-medium text-black mb-2">Your Experience</h2>
-              <p className="text-zinc-600">Tell us about what you've built or worked on before.</p>
+              <h2 className="text-2xl font-medium text-black dark:text-white mb-2">Your Experience</h2>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Tell us about what you've built or worked on before.</p>
             </div>
             <div>
               <textarea
                 value={data.experience}
                 onChange={(e) => setData({ ...data, experience: e.target.value })}
                 rows={6}
-                className="w-full px-4 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-2 focus:ring-black resize-none"
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white resize-none text-xs"
                 placeholder="Describe your previous projects, companies, or work experience..."
               />
             </div>
@@ -293,14 +293,14 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-medium text-black mb-2">Your Network</h2>
-              <p className="text-zinc-600">How many relevant people can you reach out to?</p>
+              <h2 className="text-2xl font-medium text-black dark:text-white mb-2">Your Network</h2>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">How many relevant people can you reach out to?</p>
             </div>
             <div>
               <select
                 value={data.networkSize}
                 onChange={(e) => setData({ ...data, networkSize: e.target.value })}
-                className="w-full px-4 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white text-xs"
               >
                 <option value="">Select an option</option>
                 <option value="0-10">0-10 people</option>
@@ -317,8 +317,8 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-medium text-black mb-2">Startup Ideas</h2>
-              <p className="text-zinc-600">What problems or ideas have you been thinking about?</p>
+              <h2 className="text-2xl font-medium text-black dark:text-white mb-2">Startup Ideas</h2>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">What problems or ideas have you been thinking about?</p>
             </div>
             <div className="space-y-3">
               <div className="flex gap-2">
@@ -326,12 +326,12 @@ export default function OnboardingPage() {
                   id="idea-input"
                   type="text"
                   onKeyPress={(e) => e.key === 'Enter' && addIdea()}
-                  className="flex-1 px-4 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
+                  className="flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white text-xs"
                   placeholder="e.g., AI-powered task management for remote teams"
                 />
                 <button
                   onClick={addIdea}
-                  className="px-4 py-2 bg-black text-white rounded hover:bg-zinc-800 transition-colors"
+                  className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors text-xs"
                 >
                   Add
                 </button>
@@ -341,12 +341,12 @@ export default function OnboardingPage() {
                   {data.ideas.map((idea, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between px-3 py-2 bg-zinc-50 rounded"
+                      className="flex items-center justify-between px-3 py-2 bg-zinc-50 dark:bg-zinc-800 rounded"
                     >
-                      <span className="text-sm">{idea}</span>
+                      <span className="text-xs text-black dark:text-white">{idea}</span>
                       <button
                         onClick={() => removeIdea(index)}
-                        className="text-zinc-500 hover:text-black"
+                        className="text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                       >
                         ×
                       </button>
@@ -362,12 +362,12 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-medium text-black mb-2">Resources & Time</h2>
-              <p className="text-zinc-600">What do you have available to work with?</p>
+              <h2 className="text-2xl font-medium text-black dark:text-white mb-2">Resources & Time</h2>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">What do you have available to work with?</p>
             </div>
             <div className="space-y-4">
               <div>
-                <label htmlFor="funds" className="block text-sm font-medium text-black mb-2">
+                <label htmlFor="funds" className="block text-xs font-medium text-black dark:text-white mb-2">
                   Budget Available ($)
                 </label>
                 <input
@@ -375,13 +375,13 @@ export default function OnboardingPage() {
                   type="number"
                   value={data.funds}
                   onChange={(e) => setData({ ...data, funds: e.target.value })}
-                  className="w-full px-4 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
+                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white text-xs"
                   placeholder="0"
                   min="0"
                 />
               </div>
               <div>
-                <label htmlFor="hours" className="block text-sm font-medium text-black mb-2">
+                <label htmlFor="hours" className="block text-xs font-medium text-black dark:text-white mb-2">
                   Hours per Week
                 </label>
                 <input
@@ -389,7 +389,7 @@ export default function OnboardingPage() {
                   type="number"
                   value={data.hoursPerWeek}
                   onChange={(e) => setData({ ...data, hoursPerWeek: e.target.value })}
-                  className="w-full px-4 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-2 focus:ring-black"
+                  className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white text-xs"
                   placeholder="0"
                   min="0"
                   max="168"
@@ -403,40 +403,40 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-medium text-black mb-2">Your Goal</h2>
-              <p className="text-zinc-600">What's your current startup goal?</p>
+              <h2 className="text-2xl font-medium text-black dark:text-white mb-2">Your Goal</h2>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">What's your current startup goal?</p>
             </div>
             <div>
               <textarea
                 value={data.goal}
                 onChange={(e) => setData({ ...data, goal: e.target.value })}
                 rows={4}
-                className="w-full px-4 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-2 focus:ring-black resize-none"
+                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white resize-none text-xs"
                 placeholder="e.g., Validate a startup idea, Launch an MVP, Get first 10 users..."
               />
             </div>
-            <div className="pt-4 border-t border-zinc-200">
-              <h3 className="text-lg font-medium text-black mb-4">Connect Your Tools</h3>
-              <p className="text-sm text-zinc-600 mb-4">
-                Enable integrations to help FounderOS work better with your existing workflow.
+            <div className="pt-4 border-t border-zinc-200 dark:border-zinc-700">
+              <h3 className="text-lg font-medium text-black dark:text-white mb-4">Connect Your Tools</h3>
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4 leading-relaxed">
+                Enable integrations to help Hydra work better with your existing workflow.
               </p>
               <div className="space-y-2 max-h-96 overflow-y-auto">
                 {integrations.map((integration) => (
                   <label
                     key={integration.id}
-                    className="flex items-center gap-3 p-3 border border-zinc-200 rounded hover:bg-zinc-50 cursor-pointer"
+                    className="flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
                   >
                     <input
                       type="checkbox"
                       checked={data.integrations[integration.id] || false}
                       onChange={() => toggleIntegration(integration.id)}
-                      className="w-4 h-4 text-black border-zinc-300 rounded focus:ring-black"
+                      className="w-4 h-4 text-black dark:text-white border-zinc-300 dark:border-zinc-600 rounded focus:ring-black dark:focus:ring-white"
                     />
                     <span className="text-xl">{integration.icon}</span>
                     <div className="flex-1">
-                      <div className="font-medium text-black">{integration.name}</div>
-                      <div className="text-xs text-zinc-500">{integration.category}</div>
-                      <div className="text-sm text-zinc-600">{integration.description}</div>
+                      <div className="font-medium text-black dark:text-white text-xs">{integration.name}</div>
+                      <div className="text-xs text-zinc-600 dark:text-zinc-400">{integration.category}</div>
+                      <div className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">{integration.description}</div>
                     </div>
                   </label>
                 ))}
@@ -474,17 +474,17 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-zinc-950">
       <div className="max-w-2xl mx-auto px-6 py-12">
         {/* Progress bar */}
         <div className="mb-8">
-          <div className="flex justify-between text-sm text-zinc-600 mb-2">
+          <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-2">
             <span>Step {step} of {totalSteps}</span>
             <span>{Math.round((step / totalSteps) * 100)}%</span>
           </div>
-          <div className="w-full bg-zinc-200 rounded-full h-2">
+          <div className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-2">
             <div
-              className="bg-black h-2 rounded-full transition-all duration-300"
+              className="bg-black dark:bg-white h-2 rounded-full transition-all duration-300"
               style={{ width: `${(step / totalSteps) * 100}%` }}
             />
           </div>
@@ -495,7 +495,7 @@ export default function OnboardingPage() {
 
         {/* Error message */}
         {error && (
-          <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
+          <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-800 dark:text-red-400 leading-relaxed">
             {error}
           </div>
         )}
@@ -505,7 +505,7 @@ export default function OnboardingPage() {
           <button
             onClick={handleBack}
             disabled={step === 1}
-            className="px-6 py-2 border border-zinc-300 text-black rounded hover:bg-zinc-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 border border-zinc-300 dark:border-zinc-700 text-black dark:text-white rounded hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs"
           >
             Back
           </button>
@@ -513,7 +513,7 @@ export default function OnboardingPage() {
             <button
               onClick={handleNext}
               disabled={!canProceed()}
-              className="px-6 py-2 bg-black text-white rounded hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs"
             >
               Next
             </button>
@@ -521,7 +521,7 @@ export default function OnboardingPage() {
             <button
               onClick={handleSubmit}
               disabled={!canProceed() || loading}
-              className="px-6 py-2 bg-black text-white rounded hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs"
             >
               {loading ? 'Setting up...' : 'Complete Setup'}
             </button>

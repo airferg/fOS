@@ -6,31 +6,31 @@ import ThemeToggle from '@/components/ThemeToggle'
 export default function DevPage() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
-      <nav className="bg-white dark:bg-zinc-950 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 dark:border-zinc-800">
+      <nav className="bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center">
-            <img src="/fOS.png" alt="fOS" className="h-8 w-auto" />
+            <img src="/hydra.png" alt="Hydra" className="h-8 w-auto" />
           </Link>
-          <div className="flex items-center gap-6 text-sm">
-            <Link href="/dashboard" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
+          <div className="flex items-center gap-6 text-xs">
+            <Link href="/dashboard" className="text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors">
               Dashboard
             </Link>
-            <Link href="/roadmap" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
+            <Link href="/roadmap" className="text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors">
               Roadmap
             </Link>
-            <Link href="/contacts" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
+            <Link href="/contacts" className="text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors">
               Network
             </Link>
-            <Link href="/documents" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
+            <Link href="/documents" className="text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors">
               Documents
             </Link>
-            <Link href="/agents" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
+            <Link href="/agents" className="text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors">
               AI Agents
             </Link>
-            <Link href="/integrations" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">
+            <Link href="/integrations" className="text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors">
               Integrations
             </Link>
-            <Link href="/dev" className="text-black dark:text-white dark:text-white font-medium">
+            <Link href="/dev" className="text-black dark:text-white font-medium">
               Dev
             </Link>
             <ThemeToggle />
@@ -41,19 +41,19 @@ export default function DevPage() {
       <div className="max-w-4xl mx-auto px-6 py-12">
         <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-8 space-y-8">
           <div>
-            <h1 className="text-3xl font-bold text-black dark:text-white mb-4">FounderOS - Developer Documentation</h1>
-            <p className="text-zinc-600 dark:text-zinc-400">Complete overview of the application, its goals, and roadmap to full functionality.</p>
+            <h1 className="text-3xl font-bold text-black dark:text-white mb-4">Hydra - Developer Documentation</h1>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Complete overview of the application, its goals, and roadmap to full functionality.</p>
           </div>
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-black dark:text-white border-b border-zinc-200 dark:border-zinc-800 pb-2">What This App Is</h2>
-            <div className="prose prose-sm max-w-none text-zinc-700 space-y-3">
+            <div className="max-w-none text-xs text-zinc-600 dark:text-zinc-400 space-y-3 leading-relaxed">
               <p>
-                FounderOS is an AI-powered operating system for early-stage startup founders. It acts as an autonomous AI co-founder 
+                Hydra is an AI-powered operating system for early-stage startup founders. It acts as an autonomous AI co-founder 
                 that monitors, manages, and executes business operations without constant user input.
               </p>
               <p>
-                Unlike traditional productivity tools, FounderOS is proactive rather than reactive. The AI initiates conversations, 
+                Unlike traditional productivity tools, Hydra is proactive rather than reactive. The AI initiates conversations, 
                 detects important changes (budget shifts, calendar events, roadmap progress), and suggests or executes actions 
                 autonomously. It integrates with 32+ tools (Gmail, Calendar, Slack, Stripe, Notion, etc.) to provide a unified 
                 workflow hub.
@@ -69,7 +69,7 @@ export default function DevPage() {
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-black dark:text-white border-b border-zinc-200 dark:border-zinc-800 pb-2">Ideal Features</h2>
-            <div className="space-y-4 text-zinc-700">
+            <div className="space-y-4 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
               <div>
                 <h3 className="font-semibold text-black dark:text-white mb-2">1. Autonomous Task Execution</h3>
                 <p>
@@ -148,11 +148,11 @@ export default function DevPage() {
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-black dark:text-white border-b border-zinc-200 dark:border-zinc-800 pb-2">Problems It Solves</h2>
-            <div className="space-y-3 text-zinc-700">
+            <div className="space-y-3 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
               <div>
                 <h3 className="font-semibold text-black dark:text-white">1. Founder Overwhelm</h3>
                 <p>
-                  Early-stage founders wear many hats and juggle countless tasks. FounderOS acts as a co-founder that never sleeps, 
+                  Early-stage founders wear many hats and juggle countless tasks. Hydra acts as a co-founder that never sleeps, 
                   monitoring everything and proactively suggesting what to focus on next. Reduces decision fatigue and context 
                   switching.
                 </p>
@@ -162,7 +162,7 @@ export default function DevPage() {
                 <h3 className="font-semibold text-black dark:text-white">2. Tool Fragmentation</h3>
                 <p>
                   Founders use 20+ different tools (Gmail, Calendar, Slack, Notion, Stripe, etc.) that don't talk to each other. 
-                  FounderOS provides a unified interface where data flows seamlessly between tools, eliminating manual data entry 
+                  Hydra provides a unified interface where data flows seamlessly between tools, eliminating manual data entry 
                   and context switching.
                 </p>
               </div>
@@ -170,7 +170,7 @@ export default function DevPage() {
               <div>
                 <h3 className="font-semibold text-black dark:text-white">3. Reactive vs Proactive Work</h3>
                 <p>
-                  Most tools require you to remember to use them. FounderOS is proactive - it monitors your startup and initiates 
+                  Most tools require you to remember to use them. Hydra is proactive - it monitors your startup and initiates 
                   actions when needed. You don't have to remember to check runway, follow up with contacts, or update investors - 
                   the AI does it for you.
                 </p>
@@ -180,7 +180,7 @@ export default function DevPage() {
                 <h3 className="font-semibold text-black dark:text-white">4. Network Management Chaos</h3>
                 <p>
                   Founders have hundreds of contacts across LinkedIn, email, events, etc. Managing this network manually is 
-                  impossible. FounderOS automatically organizes contacts, suggests follow-ups, tracks relationship health, and 
+                  impossible. Hydra automatically organizes contacts, suggests follow-ups, tracks relationship health, and 
                   identifies warm introductions.
                 </p>
               </div>
@@ -188,7 +188,7 @@ export default function DevPage() {
               <div>
                 <h3 className="font-semibold text-black dark:text-white">5. Lack of Strategic Context</h3>
                 <p>
-                  Most tools operate in isolation without understanding your overall startup state. FounderOS has full context - 
+                  Most tools operate in isolation without understanding your overall startup state. Hydra has full context - 
                   your goals, resources, progress, network, and history. Every suggestion is contextual and resource-aware.
                 </p>
               </div>
@@ -197,14 +197,14 @@ export default function DevPage() {
                 <h3 className="font-semibold text-black dark:text-white">6. Time-Consuming Admin Tasks</h3>
                 <p>
                   Founders spend hours on administrative tasks (drafting emails, updating documents, scheduling, data entry). 
-                  FounderOS automates these with AI agents, freeing up time for high-value work.
+                  Hydra automates these with AI agents, freeing up time for high-value work.
                 </p>
               </div>
 
               <div>
                 <h3 className="font-semibold text-black dark:text-white">7. Information Silos</h3>
                 <p>
-                  Critical information is scattered across tools, documents, emails, and conversations. FounderOS centralizes 
+                  Critical information is scattered across tools, documents, emails, and conversations. Hydra centralizes 
                   everything with semantic search, making it easy to find relevant context and past decisions.
                 </p>
               </div>
@@ -213,7 +213,7 @@ export default function DevPage() {
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-black dark:text-white border-b border-zinc-200 dark:border-zinc-800 pb-2">Who It Serves</h2>
-            <div className="space-y-3 text-zinc-700">
+            <div className="space-y-3 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
               <div>
                 <h3 className="font-semibold text-black dark:text-white">Primary: Early-Stage Startup Founders (Pre-Seed to Series A)</h3>
                 <p>
@@ -234,7 +234,7 @@ export default function DevPage() {
               <div>
                 <h3 className="font-semibold text-black dark:text-white">Tertiary: Startup Advisors & Coaches</h3>
                 <p>
-                  Advisors who manage multiple startup relationships can use FounderOS to track their portfolio, stay updated on 
+                  Advisors who manage multiple startup relationships can use Hydra to track their portfolio, stay updated on 
                   progress, and provide contextual advice. The system helps them scale their advisory work.
                 </p>
               </div>
@@ -243,40 +243,40 @@ export default function DevPage() {
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-black dark:text-white border-b border-zinc-200 dark:border-zinc-800 pb-2">Steps to Make a Fully Functional Agent System</h2>
-            <div className="space-y-6 text-zinc-700">
+            <div className="space-y-6 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
               <div>
-                <h3 className="font-semibold text-black dark:text-white mb-2">Phase 1: Core Infrastructure ✅ (COMPLETED)</h3>
+                <h3 className="font-semibold text-black dark:text-white mb-2">Phase 1: Core Infrastructure (COMPLETED)</h3>
                 <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li>✅ OpenAI integration with API client</li>
-                  <li>✅ Agent execution framework (BaseAgent, AgentRegistry)</li>
-                  <li>✅ Database schema for agent tasks and tracking</li>
-                  <li>✅ Vector database setup (pgvector for semantic search)</li>
-                  <li>✅ Event detection system framework</li>
-                  <li>✅ Proactive message generation system</li>
-                  <li>✅ Background job system (cron endpoints)</li>
+                  <li>OpenAI integration with API client</li>
+                  <li>Agent execution framework (BaseAgent, AgentRegistry)</li>
+                  <li>Database schema for agent tasks and tracking</li>
+                  <li>Vector database setup (pgvector for semantic search)</li>
+                  <li>Event detection system framework</li>
+                  <li>Proactive message generation system</li>
+                  <li>Background job system (cron endpoints)</li>
                 </ul>
               </div>
 
               <div>
-                <h3 className="font-semibold text-black dark:text-white mb-2">Phase 2: Complete 3 Proof-of-Concept Agents ✅ (COMPLETED)</h3>
+                <h3 className="font-semibold text-black dark:text-white mb-2">Phase 2: Complete 3 Proof-of-Concept Agents (COMPLETED)</h3>
                 <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li>✅ Draft Investor Update Email - Pulls metrics, generates email</li>
-                  <li>✅ Generate Product Spec - Creates PRD from roadmap items</li>
-                  <li>✅ Analyze Customer Feedback - Extracts insights and action items</li>
+                  <li>Draft Investor Update Email - Pulls metrics, generates email</li>
+                  <li>Generate Product Spec - Creates PRD from roadmap items</li>
+                  <li>Analyze Customer Feedback - Extracts insights and action items</li>
                 </ul>
               </div>
 
               <div>
                 <h3 className="font-semibold text-black dark:text-white mb-2">Phase 3: OAuth Integrations (IN PROGRESS)</h3>
                 <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li>🔲 Gmail OAuth - Read/send emails, detect important messages</li>
-                  <li>🔲 Google Calendar OAuth - Read events, create meetings, detect conflicts</li>
-                  <li>🔲 Slack OAuth - Read messages, send notifications, detect mentions</li>
-                  <li>🔲 Stripe Webhooks - Real-time payment events, budget updates</li>
-                  <li>🔲 Notion OAuth - Sync roadmap, create documents, update pages</li>
-                  <li>🔲 Linear/Jira OAuth - Create tickets, sync tasks, track progress</li>
+                  <li>Gmail OAuth - Read/send emails, detect important messages</li>
+                  <li>Google Calendar OAuth - Read events, create meetings, detect conflicts</li>
+                  <li>Slack OAuth - Read messages, send notifications, detect mentions</li>
+                  <li>Stripe Webhooks - Real-time payment events, budget updates</li>
+                  <li>Notion OAuth - Sync roadmap, create documents, update pages</li>
+                  <li>Linear/Jira OAuth - Create tickets, sync tasks, track progress</li>
                 </ul>
-                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
                   Each integration requires: OAuth flow, token storage, API client, event detection, webhook handlers (where applicable)
                 </p>
               </div>
@@ -284,50 +284,50 @@ export default function DevPage() {
               <div>
                 <h3 className="font-semibold text-black dark:text-white mb-2">Phase 4: Complete All 20 AI Agents (PARTIAL)</h3>
                 <p className="mb-2">Currently have 3 agents. Need to implement remaining 17:</p>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
                     <h4 className="font-medium text-black dark:text-white mb-1">Customer Development (4 agents):</h4>
                     <ul className="list-disc list-inside space-y-1 ml-4">
-                      <li>🔲 Schedule customer interview (Calendar integration)</li>
-                      <li>🔲 Generate customer survey (Form builder integration)</li>
-                      <li>🔲 Draft cold outreach sequence (Email integration)</li>
-                      <li>🔲 Analyze interview transcripts (NLP analysis)</li>
+                      <li>Schedule customer interview (Calendar integration)</li>
+                      <li>Generate customer survey (Form builder integration)</li>
+                      <li>Draft cold outreach sequence (Email integration)</li>
+                      <li>Analyze interview transcripts (NLP analysis)</li>
                     </ul>
                   </div>
                   <div>
                     <h4 className="font-medium text-black dark:text-white mb-1">Product (4 agents):</h4>
                     <ul className="list-disc list-inside space-y-1 ml-4">
-                      <li>🔲 Create Jira tickets from feedback (Jira integration)</li>
-                      <li>🔲 Review pull requests (GitHub integration)</li>
-                      <li>🔲 Analyze competitor features (Web scraping + analysis)</li>
-                      <li>✅ Generate product spec (COMPLETED)</li>
+                      <li>Create Jira tickets from feedback (Jira integration)</li>
+                      <li>Review pull requests (GitHub integration)</li>
+                      <li>Analyze competitor features (Web scraping + analysis)</li>
+                      <li>Generate product spec (COMPLETED)</li>
                     </ul>
                   </div>
                   <div>
                     <h4 className="font-medium text-black dark:text-white mb-1">Fundraising (4 agents):</h4>
                     <ul className="list-disc list-inside space-y-1 ml-4">
-                      <li>✅ Draft investor update (COMPLETED)</li>
-                      <li>🔲 Research VCs for seed round (Web research + analysis)</li>
-                      <li>🔲 Update pitch deck with metrics (Document generation)</li>
-                      <li>🔲 Send thank you notes to investors (Email integration)</li>
+                      <li>Draft investor update (COMPLETED)</li>
+                      <li>Research VCs for seed round (Web research + analysis)</li>
+                      <li>Update pitch deck with metrics (Document generation)</li>
+                      <li>Send thank you notes to investors (Email integration)</li>
                     </ul>
                   </div>
                   <div>
                     <h4 className="font-medium text-black dark:text-white mb-1">Marketing (4 agents):</h4>
                     <ul className="list-disc list-inside space-y-1 ml-4">
-                      <li>🔲 Write LinkedIn posts (Social media API)</li>
-                      <li>🔲 Generate SEO blog post (SEO optimization)</li>
-                      <li>🔲 Analyze website traffic (Analytics integration)</li>
-                      <li>🔲 Set up email nurture campaign (Email marketing integration)</li>
+                      <li>Write LinkedIn posts (Social media API)</li>
+                      <li>Generate SEO blog post (SEO optimization)</li>
+                      <li>Analyze website traffic (Analytics integration)</li>
+                      <li>Set up email nurture campaign (Email marketing integration)</li>
                     </ul>
                   </div>
                   <div>
                     <h4 className="font-medium text-black dark:text-white mb-1">Operations (4 agents):</h4>
                     <ul className="list-disc list-inside space-y-1 ml-4">
-                      <li>🔲 Sync tasks to Notion (Notion integration)</li>
-                      <li>🔲 Generate weekly team priorities (Task analysis)</li>
-                      <li>🔲 Reconcile Stripe with QuickBooks (Payment reconciliation)</li>
-                      <li>🔲 Analyze calendar for focus time (Calendar optimization)</li>
+                      <li>Sync tasks to Notion (Notion integration)</li>
+                      <li>Generate weekly team priorities (Task analysis)</li>
+                      <li>Reconcile Stripe with QuickBooks (Payment reconciliation)</li>
+                      <li>Analyze calendar for focus time (Calendar optimization)</li>
                     </ul>
                   </div>
                 </div>
@@ -336,12 +336,12 @@ export default function DevPage() {
               <div>
                 <h3 className="font-semibold text-black dark:text-white mb-2">Phase 5: Enhanced Event Detection (PARTIAL)</h3>
                 <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li>✅ Budget changes (Basic - needs Stripe integration)</li>
-                  <li>✅ Roadmap updates (Basic - needs enhancement)</li>
-                  <li>🔲 Calendar events (Needs Google Calendar OAuth)</li>
-                  <li>🔲 Email events (Needs Gmail OAuth)</li>
-                  <li>🔲 Payment events (Needs Stripe webhooks)</li>
-                  <li>🔲 Slack mentions (Needs Slack OAuth)</li>
+                  <li>Budget changes (Basic - needs Stripe integration)</li>
+                  <li>Roadmap updates (Basic - needs enhancement)</li>
+                  <li>Calendar events (Needs Google Calendar OAuth)</li>
+                  <li>Email events (Needs Gmail OAuth)</li>
+                  <li>Payment events (Needs Stripe webhooks)</li>
+                  <li>Slack mentions (Needs Slack OAuth)</li>
                   <li>🔲 Contact interactions (Needs email/calendar integration)</li>
                 </ul>
               </div>
@@ -377,7 +377,7 @@ export default function DevPage() {
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-black dark:text-white border-b border-zinc-200 dark:border-zinc-800 pb-2">Steps to Make Fully Functional App</h2>
-            <div className="space-y-6 text-zinc-700">
+            <div className="space-y-6 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
               <div>
                 <h3 className="font-semibold text-black dark:text-white mb-2">Current Status: ~40% Complete</h3>
                 <p className="mb-2">
@@ -456,7 +456,7 @@ export default function DevPage() {
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-black dark:text-white border-b border-zinc-200 dark:border-zinc-800 pb-2">Technical Stack</h2>
-            <div className="text-zinc-700 space-y-2">
+            <div className="text-xs text-zinc-600 dark:text-zinc-400 space-y-2 leading-relaxed">
               <p><span className="font-semibold">Frontend:</span> Next.js 16, React, TypeScript, Tailwind CSS</p>
               <p><span className="font-semibold">Backend:</span> Next.js API Routes, Supabase (PostgreSQL + Auth)</p>
               <p><span className="font-semibold">AI:</span> OpenAI GPT-4 Turbo, text-embedding-3-small</p>
@@ -469,7 +469,7 @@ export default function DevPage() {
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-black dark:text-white border-b border-zinc-200 dark:border-zinc-800 pb-2">Key Architectural Decisions</h2>
-            <div className="space-y-3 text-zinc-700">
+            <div className="space-y-3 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
               <div>
                 <h3 className="font-semibold text-black dark:text-white">Agent Framework Pattern</h3>
                 <p>
@@ -502,7 +502,7 @@ export default function DevPage() {
           </section>
 
           <div className="pt-8 border-t border-zinc-200 dark:border-zinc-800">
-            <p className="text-sm text-zinc-500">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
               Last updated: {new Date().toLocaleDateString()} | 
               Status: Active Development | 
               Current Completion: ~40%

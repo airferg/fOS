@@ -44,38 +44,38 @@ export async function GET(req: NextRequest) {
       messages = messagesData || []
     }
 
-    // If no pending messages, check for new events and generate recommendations
-    if (messages.length === 0) {
-      console.log('[GET /api/chat/proactive] No pending messages, checking for new events...')
-      try {
-        // Detect any new events in the user's workflow
-        const events = await detectAllEvents(user.id)
-        console.log('[GET /api/chat/proactive] Detected', events.length, 'events')
-        
-        if (events.length > 0) {
-          // Process events into proactive recommendations
-          // Pass the authenticated supabase client to ensure RLS policies work
-          const newMessages = await processEvents(user.id, supabase)
-          console.log('[GET /api/chat/proactive] Generated', newMessages.length, 'new proactive messages')
-          
-          // Fetch the newly created messages
-          if (newMessages.length > 0) {
-            const { data: newMessagesData } = await supabase
-              .from('proactive_messages')
-              .select('*')
-              .eq('user_id', user.id)
-              .eq('status', 'pending')
-              .in('id', newMessages.map(m => m.id))
-              .order('created_at', { ascending: true })
-            
-            messages = newMessagesData || []
-          }
-        }
-      } catch (error: any) {
-        console.error('[GET /api/chat/proactive] Error checking for events:', error)
-        // Continue with empty messages if event detection fails
-      }
-    }
+    // PROACTIVE SYSTEM DISABLED - Skip event detection and message generation
+    // if (messages.length === 0) {
+    //   console.log('[GET /api/chat/proactive] No pending messages, checking for new events...')
+    //   try {
+    //     // Detect any new events in the user's workflow
+    //     const events = await detectAllEvents(user.id)
+    //     console.log('[GET /api/chat/proactive] Detected', events.length, 'events')
+    //     
+    //     if (events.length > 0) {
+    //       // Process events into proactive recommendations
+    //       // Pass the authenticated supabase client to ensure RLS policies work
+    //       const newMessages = await processEvents(user.id, supabase)
+    //       console.log('[GET /api/chat/proactive] Generated', newMessages.length, 'new proactive messages')
+    //       
+    //       // Fetch the newly created messages
+    //       if (newMessages.length > 0) {
+    //         const { data: newMessagesData } = await supabase
+    //           .from('proactive_messages')
+    //           .select('*')
+    //           .eq('user_id', user.id)
+    //           .eq('status', 'pending')
+    //           .in('id', newMessages.map(m => m.id))
+    //           .order('created_at', { ascending: true })
+    //         
+    //         messages = newMessagesData || []
+    //       }
+    //     }
+    //   } catch (error: any) {
+    //     console.error('[GET /api/chat/proactive] Error checking for events:', error)
+    //     // Continue with empty messages if event detection fails
+    //   }
+    // }
 
     // Convert proactive messages to chat format
     // Only return actual AI-generated recommendations based on workflow changes

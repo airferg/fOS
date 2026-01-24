@@ -94,28 +94,7 @@ export async function GET(req: NextRequest) {
 }
 
 function getIntegrationIcon(source: string): string {
-  const icons: Record<string, string> = {
-    'slack': '💬',
-    'gmail': '📧',
-    'google-calendar': '📅',
-    'google_calendar': '📅',
-    'calendly': '🗓️',
-    'stripe': '💳',
-    'github': '🐙',
-    'notion': '📝',
-    'discord': '🎮',
-    'zoom': '🎥',
-    'typeform': '📝',
-    'asana': '✓',
-    'jira': '🔷',
-    'intercom': '💬',
-    'zendesk': '🎫',
-    'mailchimp': '🐵',
-    'hubspot': '🧲',
-    'twitter': '🐦',
-    'linkedin': '💼',
-  }
-  return icons[source.toLowerCase()] || '🔌'
+  return ''
 }
 
 function getSeverityColor(severity: string): string {

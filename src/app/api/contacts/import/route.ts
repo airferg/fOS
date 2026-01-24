@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
-import { executeAgent } from '@/lib/agents'
 
 interface LinkedInCSVRow {
   'First Name': string
@@ -27,7 +26,6 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData()
     const file = formData.get('file') as File
-    const useAI = formData.get('useAI') !== 'false' // Default to true
 
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
@@ -85,19 +83,51 @@ export async function POST(req: NextRequest) {
         csvData.push(row as LinkedInCSVRow)
       }
 
-      // Use AI agent to parse and enrich
-      const result = await executeAgent('parse-linkedin-csv', {
-        csvData,
-        enrichWithAI: useAI
-      }, user.id)
+      // Parse LinkedIn CSV data directly
+      parsedContacts = csvData.map((row: LinkedInCSVRow) => {
+        const firstName = row['First Name']?.trim() || ''
+        const lastName = row['Last Name']?.trim() || ''
+        const name = `${firstName} ${lastName}`.trim()
+        
+        // Extract LinkedIn URL - LinkedIn CSV exports have various column names
+        let linkedinUrl = row['URL'] || row['Profile URL'] || row['LinkedIn URL'] || row['Profile'] || null
+        if (linkedinUrl) {
+          linkedinUrl = linkedinUrl.trim()
+          // Ensure it's a full URL
+          if (linkedinUrl && !linkedinUrl.startsWith('http')) {
+            linkedinUrl = `https://${linkedinUrl}`
+          }
+        }
+        
+        return {
+          name,
+          email: row['Email Address']?.trim() || null,
+          company: row.Company?.trim() || null,
+          position: row.Position?.trim() || null,
+          role: row.Position?.trim() || null,
+          linkedin_url: linkedinUrl,
+          stage: 'contacted',
+          tags: [],
+          can_help_with: [],
+          connection_strength: 'weak'
+        }
+      }).filter(c => c.name) // Remove empty contacts
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to parse LinkedIn CSV')
+      // Extract unique organizations
+      const orgSet = new Set<string>()
+      parsedContacts.forEach(c => {
+        if (c.company) orgSet.add(c.company)
+      })
+      organizations = Array.from(orgSet).map(name => ({
+        name,
+        industry: null
+      }))
+
+      stats = {
+        totalParsed: parsedContacts.length,
+        withEmails: parsedContacts.filter(c => c.email).length,
+        withoutEmails: parsedContacts.filter(c => !c.email).length
       }
-
-      parsedContacts = result.data.contacts
-      organizations = result.data.organizations
-      stats = result.data.stats
     } else {
       // Basic CSV format: name, email, role (backwards compatibility)
       for (let i = 1; i < lines.length; i++) {
@@ -154,6 +184,7 @@ export async function POST(req: NextRequest) {
       role: contact.position || contact.role || null,
       company: contact.company || null,
       position: contact.position || null,
+      linkedin_url: contact.linkedin_url || null,
       tags: contact.tags || [],
       stage: contact.stage || 'contacted',
       helpful_for: contact.helpful_for || null,

@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
@@ -88,26 +88,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
       <div className="w-full max-w-md px-8">
         <div className="mb-10">
-          <h1 className="text-2xl font-medium tracking-tight text-black mb-2">
-            FounderOS
+          <h1 className="text-2xl font-medium tracking-tight text-black dark:text-white mb-2">
+            Hydra
           </h1>
-          <p className="text-sm text-zinc-600">
+          <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
             Sign in to continue
           </p>
         </div>
 
         {error && (
-          <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
+          <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-800 dark:text-red-400 leading-relaxed">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-black mb-1.5">
+            <label htmlFor="email" className="block text-xs font-medium text-black dark:text-white mb-1.5">
               Email
             </label>
             <input
@@ -116,13 +116,13 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-1 focus:ring-black focus:border-black text-sm"
+              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white text-xs"
               placeholder="you@example.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-black mb-1.5">
+            <label htmlFor="password" className="block text-xs font-medium text-black dark:text-white mb-1.5">
               Password
             </label>
             <input
@@ -131,7 +131,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full px-3 py-2 border border-zinc-300 rounded focus:outline-none focus:ring-1 focus:ring-black focus:border-black text-sm"
+              className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white focus:border-black dark:focus:border-white text-xs"
               placeholder="••••••••"
             />
           </div>
@@ -139,7 +139,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-black text-white text-sm font-medium rounded hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2.5 bg-black dark:bg-white text-white dark:text-black text-xs font-medium rounded hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
@@ -147,27 +147,43 @@ export default function LoginPage() {
 
         <div className="mt-6 relative">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-zinc-200"></div>
+            <div className="w-full border-t border-zinc-200 dark:border-zinc-700"></div>
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="px-2 bg-white text-zinc-500">or</span>
+            <span className="px-2 bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400">or</span>
           </div>
         </div>
 
         <button
           onClick={handleGoogleLogin}
-          className="mt-6 w-full py-2.5 border border-zinc-300 text-black text-sm font-medium rounded hover:bg-zinc-50 transition-colors"
+          className="mt-6 w-full py-2.5 border border-zinc-300 dark:border-zinc-700 text-black dark:text-white text-xs font-medium rounded hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
         >
           Continue with Google
         </button>
 
-        <p className="mt-8 text-center text-sm text-zinc-600">
+        <p className="mt-8 text-center text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
           Don't have an account?{' '}
-          <Link href="/auth/signup" className="text-black font-medium hover:underline">
+          <Link href="/auth/signup" className="text-black dark:text-white font-medium hover:underline">
             Sign up
           </Link>
         </p>
       </div>
     </div>
+  )
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black dark:border-white"></div>
+    </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <LoginContent />
+    </Suspense>
   )
 }

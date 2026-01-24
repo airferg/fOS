@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FounderOS - AI Operating System for Founders",
+  title: "Hydra - AI Operating System for Founders",
   description: "Leverage what you have. Build your startup using the Bird-in-Hand principle.",
 };
 

@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { name, description, color = '#3B82F6', icon = '📁' } = body
+    const { name, description, color = '#3B82F6', icon = '' } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })

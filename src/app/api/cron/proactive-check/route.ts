@@ -15,8 +15,8 @@ import { processEvents } from '@/lib/proactive/proactive-engine'
  * Headers: Authorization: Bearer <cron-secret>
  */
 export async function GET(req: NextRequest) {
-  console.log('[Cron: Proactive Check] ⏰ ===== CRON JOB STARTED =====')
-  console.log('[Cron: Proactive Check] 🕐 Time:', new Date().toISOString())
+  console.log('[Cron: Proactive Check] ===== CRON JOB STARTED =====')
+  console.log('[Cron: Proactive Check] Time:', new Date().toISOString())
   
   try {
     // Verify cron secret (optional but recommended)

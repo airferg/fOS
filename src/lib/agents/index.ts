@@ -7,10 +7,13 @@
 import './tools'
 
 // Import agents to register them
-import './draft-investor-email'
+import './investor-readiness'
+import './investor-update-drafting'
+import './fundraising-crm'
+import './product-market-fit-tracker'
+import './cap-table-advisor'
 import './generate-product-spec'
 import './analyze-customer-feedback'
-import './parse-linkedin-csv'
 import './task-executor'
 import './strategic-planner'
 import './progress-analyzer'
