@@ -6,6 +6,15 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const response = NextResponse.next()
 
+  // Check if Supabase env vars are configured
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // If Supabase is not configured, skip auth checks and allow all requests
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return response
+  }
+
   // Public routes that don't require authentication
   const publicRoutes = ['/', '/auth/login', '/auth/signup', '/auth/callback']
 
@@ -13,8 +22,8 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/api/')) {
     // Refresh session for API routes so cookies are available
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      supabaseUrl,
+      supabaseAnonKey,
       {
         cookies: {
           getAll() {
@@ -39,8 +48,8 @@ export async function middleware(request: NextRequest) {
   if (isPublicRoute) {
     // Still refresh session for public routes
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      supabaseUrl,
+      supabaseAnonKey,
       {
         cookies: {
           getAll() {
@@ -61,8 +70,8 @@ export async function middleware(request: NextRequest) {
 
   // For protected routes, refresh session and check auth
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll() {
