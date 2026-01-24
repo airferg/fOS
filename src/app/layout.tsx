@@ -1,15 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
-
-const inter = Inter({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  display: "swap",
-  fallback: ["system-ui", "-apple-system", "sans-serif"],
-});
 
 export const metadata: Metadata = {
   title: "Hydra - AI Operating System for Founders",
@@ -24,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} antialiased`}
+        className="antialiased"
         suppressHydrationWarning
       >
         <Script

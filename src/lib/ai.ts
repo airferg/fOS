@@ -1,13 +1,32 @@
 import { OpenAI } from 'openai'
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+/**
+ * Get OpenAI client instance (lazy initialization)
+ * Only initializes when actually called, not at module load time
+ * Returns null if API key is not configured (allows build to succeed)
+ */
+let _client: OpenAI | null = null
+
+function getClient(): OpenAI | null {
+  if (!_client) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      return null
+    }
+    _client = new OpenAI({ apiKey })
+  }
+  return _client
+}
 
 export async function generateResponse(
   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
   systemPrompt?: string
 ) {
+  const client = getClient()
+  if (!client) {
+    throw new Error('OpenAI API key not configured')
+  }
+
   const systemMessage = systemPrompt || `You are Hydra, an AI-powered operating system for early-stage startup founders. 
 You help founders leverage the "Bird in Hand" principle - using what they already have (skills, network, funds, experience).
 You're encouraging, practical, and action-oriented. You understand startup building, validation, and growth.

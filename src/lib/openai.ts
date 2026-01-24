@@ -1,15 +1,39 @@
 import OpenAI from 'openai'
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('Missing OPENAI_API_KEY environment variable')
+/**
+ * Get OpenAI client instance (lazy initialization)
+ * Used for all AI agent operations
+ * Only initializes when actually called, not at module load time
+ * Returns null if API key is not configured (allows build to succeed)
+ */
+let _openai: OpenAI | null = null
+
+function getOpenAIClient(): OpenAI | null {
+  if (!_openai) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      return null
+    }
+    _openai = new OpenAI({ apiKey })
+  }
+  return _openai
 }
 
-/**
- * OpenAI client instance configured with API key
- * Used for all AI agent operations
- */
-export const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+export const openai = new Proxy({} as OpenAI, {
+  get(_target, prop) {
+    const client = getOpenAIClient()
+    if (!client) {
+      // Return a no-op function for build time
+      return () => {
+        throw new Error('OpenAI API key not configured')
+      }
+    }
+    const value = client[prop as keyof OpenAI]
+    if (typeof value === 'function') {
+      return value.bind(client)
+    }
+    return value
+  }
 })
 
 /**
