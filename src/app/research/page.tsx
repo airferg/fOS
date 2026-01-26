@@ -790,13 +790,13 @@ function ProductWorkspace({ product }: { product: Product }) {
     setInterviewsList([newInterview, ...interviewsList])
   }
 
-  const tabs = [
+  const tabs: Array<{ id: 'overview' | 'feedback' | 'insights' | 'tests' | 'discovery'; label: string; count?: number }> = [
     { id: 'overview', label: 'Overview' },
     { id: 'feedback', label: 'Feedback', count: feedback.length },
     { id: 'insights', label: 'Insights', count: insights.length },
     { id: 'tests', label: 'Tests', count: tests.filter(t => t.status === 'running').length },
     { id: 'discovery', label: 'Discovery', count: interviews.filter(i => i.status === 'scheduled').length },
-  ] as const
+  ]
 
   return (
     <motion.div

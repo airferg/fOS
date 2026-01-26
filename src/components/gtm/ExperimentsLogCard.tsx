@@ -51,12 +51,20 @@ export default function ExperimentsLogCard() {
   const [experiments, setExperiments] = useState<Experiment[]>(mockExperiments)
   const [showModal, setShowModal] = useState(false)
   const [editingExperiment, setEditingExperiment] = useState<Experiment | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    hypothesis: string
+    channel: string
+    test: string
+    result: string
+    decision: 'Continue' | 'Stop' | 'Iterate'
+    owner: string
+    date: string
+  }>({
     hypothesis: '',
     channel: '',
     test: '',
     result: '',
-    decision: 'Continue' as const,
+    decision: 'Continue',
     owner: '',
     date: new Date().toISOString().split('T')[0]
   })

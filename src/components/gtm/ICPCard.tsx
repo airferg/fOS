@@ -41,13 +41,20 @@ export default function ICPCard() {
   const [icps, setIcps] = useState<ICPSegment[]>(mockICPs)
   const [showModal, setShowModal] = useState(false)
   const [editingIcp, setEditingIcp] = useState<ICPSegment | null>(null)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string
+    jobToBeDone: string
+    painLevel: 'low' | 'medium' | 'high'
+    willingnessToPay: 'low' | 'medium' | 'high'
+    confidence: 'low' | 'medium' | 'high'
+    source: 'Manual' | 'Imported from Notion' | 'From HubSpot'
+  }>({
     name: '',
     jobToBeDone: '',
-    painLevel: 'medium' as const,
-    willingnessToPay: 'medium' as const,
-    confidence: 'medium' as const,
-    source: 'Manual' as const
+    painLevel: 'medium',
+    willingnessToPay: 'medium',
+    confidence: 'medium',
+    source: 'Manual'
   })
 
   const handleAdd = () => {

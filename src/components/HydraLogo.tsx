@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 
 interface HydraLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl'
@@ -24,7 +24,7 @@ export default function HydraLogo({
 
   const { logo: logoSize, text: textSize } = sizeMap[size]
 
-  const logoVariants = {
+  const logoVariants: Variants = {
     initial: { 
       rotate: 0,
       scale: 0.8,
@@ -37,11 +37,11 @@ export default function HydraLogo({
       transition: {
         rotate: {
           duration: 0.8,
-          ease: 'easeOut',
+          ease: 'easeOut' as const,
         },
         scale: {
           duration: 0.5,
-          ease: 'easeOut',
+          ease: 'easeOut' as const,
         },
         opacity: {
           duration: 0.3,
@@ -52,12 +52,12 @@ export default function HydraLogo({
       rotate: 180,
       transition: {
         duration: 0.4,
-        ease: 'easeInOut',
+        ease: 'easeInOut' as const,
       }
     }
   }
 
-  const textVariants = {
+  const textVariants: Variants = {
     initial: { 
       opacity: 0,
       x: -10
@@ -68,7 +68,7 @@ export default function HydraLogo({
       transition: {
         duration: 0.4,
         delay: 0.3,
-        ease: 'easeOut',
+        ease: 'easeOut' as const,
       }
     }
   }
