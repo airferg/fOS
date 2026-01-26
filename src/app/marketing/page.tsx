@@ -1,698 +1,1210 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import AppLayout from '@/components/AppLayout'
 import { PageBackground } from '@/components/PageBackground'
 
-// Types
-interface Lead {
+// Types for GTM primitives
+interface IcpSegment {
+  id: string
+  name: string
+  description: string
+  attributes: string[]
+  winRate: number
+  avgDealSize: number
+  retention: number
+  tier: 1 | 2 | 3
+  accountCount: number
+}
+
+interface Deal {
   id: string
   name: string
   company: string
-  title: string
-  email: string
-  stage: 'cold' | 'contacted' | 'replied' | 'call-scheduled' | 'demo' | 'negotiating' | 'won' | 'lost'
+  amount: number
+  stage: string
+  daysInStage: number
+  lastActivity: string
+  nextStep?: string
+  riskLevel: 'low' | 'medium' | 'high'
+  contacts: { name: string; role: string }[]
   source: string
-  lastTouch: string
-  nextAction?: string
-  value?: number
-  notes?: string
 }
 
-interface Channel {
+interface OutboundSequence {
   id: string
   name: string
-  icon: string
-  leads: number
-  conversion: number
-  cac: number
-  status: 'active' | 'paused' | 'testing'
+  status: 'active' | 'paused' | 'draft'
+  icpTarget: string
+  prospectsEnrolled: number
+  openRate: number
+  replyRate: number
+  meetingsBooked: number
+  steps: { type: string; subject?: string; content: string }[]
 }
 
-interface OutreachTemplate {
+interface ActivationCohort {
   id: string
   name: string
-  type: 'email' | 'linkedin' | 'twitter'
-  subject?: string
-  content: string
-  useCount: number
+  signups: number
+  activated: number
+  upgraded: number
+  topDropoff: string
+  avgTimeToActivation: number
 }
 
-interface Experiment {
+interface GtmExperiment {
   id: string
   name: string
   hypothesis: string
   channel: string
   status: 'running' | 'completed' | 'paused'
-  result?: 'success' | 'failure' | 'inconclusive'
-  metric: string
   startDate: string
+  metric: string
+  baseline: number
+  current: number
+  result?: 'win' | 'lose' | 'inconclusive'
 }
 
-// Mock Data
-const mockLeads: Lead[] = [
-  { id: 'l1', name: 'Sarah Chen', company: 'TechVentures', title: 'Head of Product', email: 'sarah@techventures.com', stage: 'demo', source: 'LinkedIn', lastTouch: '2026-01-23', nextAction: 'Send proposal', value: 12000 },
-  { id: 'l2', name: 'Mike Rodriguez', company: 'StartupCo', title: 'CEO', email: 'mike@startupco.io', stage: 'call-scheduled', source: 'Cold Email', lastTouch: '2026-01-24', nextAction: 'Call at 3pm today', value: 8000 },
-  { id: 'l3', name: 'Emily Watson', company: 'GrowthLabs', title: 'COO', email: 'emily@growthlabs.com', stage: 'replied', source: 'Referral', lastTouch: '2026-01-22', nextAction: 'Schedule intro call' },
-  { id: 'l4', name: 'David Kim', company: 'InnovateTech', title: 'Founder', email: 'david@innovatetech.co', stage: 'contacted', source: 'LinkedIn', lastTouch: '2026-01-20', nextAction: 'Follow up' },
-  { id: 'l5', name: 'Lisa Park', company: 'ScaleUp Inc', title: 'VP Operations', email: 'lisa@scaleup.io', stage: 'cold', source: 'Conference', lastTouch: '2026-01-18' },
-  { id: 'l6', name: 'James Wilson', company: 'FutureFund', title: 'Partner', email: 'james@futurefund.vc', stage: 'negotiating', source: 'Intro', lastTouch: '2026-01-24', nextAction: 'Review terms', value: 25000 },
-  { id: 'l7', name: 'Anna Martinez', company: 'CloudFirst', title: 'CTO', email: 'anna@cloudfirst.dev', stage: 'won', source: 'Content', lastTouch: '2026-01-15', value: 15000 },
-  { id: 'l8', name: 'Tom Brown', company: 'DataDriven', title: 'Head of Growth', email: 'tom@datadriven.ai', stage: 'lost', source: 'LinkedIn', lastTouch: '2026-01-10', notes: 'Budget constraints' },
+interface SupportTheme {
+  id: string
+  theme: string
+  ticketCount: number
+  avgSentiment: number
+  topPhrases: string[]
+  suggestedAction?: string
+}
+
+interface ExecutionStep {
+  id: string
+  message: string
+  status: 'pending' | 'running' | 'complete'
+}
+
+// Mock data
+const mockSegments: IcpSegment[] = [
+  { id: 's1', name: 'Mid-Market SaaS', description: 'B2B SaaS companies, 50-200 employees, Series A-B', attributes: ['SaaS', '50-200 emp', 'Series A-B', 'NA/EU'], winRate: 42, avgDealSize: 18000, retention: 94, tier: 1, accountCount: 45 },
+  { id: 's2', name: 'Enterprise Tech', description: 'Large tech companies with innovation budgets', attributes: ['Tech', '500+ emp', 'Enterprise'], winRate: 28, avgDealSize: 45000, retention: 88, tier: 2, accountCount: 12 },
+  { id: 's3', name: 'SMB Agencies', description: 'Digital agencies and consultancies', attributes: ['Agency', '10-50 emp', 'Services'], winRate: 35, avgDealSize: 6000, retention: 72, tier: 3, accountCount: 89 },
 ]
 
-const mockChannels: Channel[] = [
-  { id: 'ch1', name: 'LinkedIn Outreach', icon: '💼', leads: 23, conversion: 12, cac: 45, status: 'active' },
-  { id: 'ch2', name: 'Cold Email', icon: '📧', leads: 18, conversion: 8, cac: 32, status: 'active' },
-  { id: 'ch3', name: 'Content/SEO', icon: '📝', leads: 12, conversion: 22, cac: 18, status: 'active' },
-  { id: 'ch4', name: 'Referrals', icon: '🤝', leads: 8, conversion: 45, cac: 0, status: 'active' },
-  { id: 'ch5', name: 'Paid Ads', icon: '📢', leads: 5, conversion: 6, cac: 120, status: 'paused' },
-  { id: 'ch6', name: 'Twitter/X', icon: '🐦', leads: 3, conversion: 15, cac: 25, status: 'testing' },
+const mockDeals: Deal[] = [
+  { id: 'd1', name: 'Acme Corp Expansion', company: 'Acme Corp', amount: 24000, stage: 'Negotiation', daysInStage: 12, lastActivity: '2 days ago', nextStep: 'Send revised proposal', riskLevel: 'low', contacts: [{ name: 'Sarah Chen', role: 'VP Ops' }], source: 'Outbound' },
+  { id: 'd2', name: 'TechStart Initial', company: 'TechStart', amount: 8500, stage: 'Demo', daysInStage: 8, lastActivity: '5 days ago', riskLevel: 'high', contacts: [{ name: 'Mike Johnson', role: 'Founder' }], source: 'Inbound' },
+  { id: 'd3', name: 'GlobalCo Pilot', company: 'GlobalCo', amount: 36000, stage: 'Proposal', daysInStage: 3, lastActivity: '1 day ago', nextStep: 'Champion call scheduled', riskLevel: 'medium', contacts: [{ name: 'Lisa Park', role: 'Director' }, { name: 'Tom Wilson', role: 'CTO' }], source: 'Referral' },
+  { id: 'd4', name: 'StartupX Deal', company: 'StartupX', amount: 12000, stage: 'Discovery', daysInStage: 18, lastActivity: '9 days ago', riskLevel: 'high', contacts: [{ name: 'Alex Rivera', role: 'CEO' }], source: 'Outbound' },
 ]
 
-const mockTemplates: OutreachTemplate[] = [
-  { id: 't1', name: 'Cold Intro - Problem Aware', type: 'email', subject: 'Quick question about [pain point]', content: 'Hi {name},\n\nI noticed {company} is scaling fast. Most teams at your stage struggle with [pain point].\n\nWe help companies like yours [benefit]. Would you be open to a quick 15-min chat?\n\nBest,\n{sender}', useCount: 45 },
-  { id: 't2', name: 'LinkedIn Connection Request', type: 'linkedin', content: 'Hi {name} - I see you\'re leading {role} at {company}. I work with similar companies on [problem]. Would love to connect and share some ideas.', useCount: 120 },
-  { id: 't3', name: 'Follow-up After No Reply', type: 'email', subject: 'Re: Quick question', content: 'Hi {name},\n\nJust floating this back to the top of your inbox. I know you\'re busy.\n\nWould next Tuesday or Thursday work for a brief call?\n\nBest,\n{sender}', useCount: 32 },
-  { id: 't4', name: 'Post-Demo Follow Up', type: 'email', subject: 'Next steps from our call', content: 'Hi {name},\n\nGreat chatting today! As discussed:\n\n- [Key point 1]\n- [Key point 2]\n- [Key point 3]\n\nI\'ll send over the proposal by EOD. Any questions, just reply here.\n\nBest,\n{sender}', useCount: 18 },
+const mockSequences: OutboundSequence[] = [
+  { id: 'seq1', name: 'Mid-Market SaaS Intro', status: 'active', icpTarget: 'Mid-Market SaaS', prospectsEnrolled: 245, openRate: 52, replyRate: 8.2, meetingsBooked: 12, steps: [{ type: 'email', subject: 'Quick question about {{company}}', content: 'Hi {{firstName}}, I noticed {{company}} recently...' }, { type: 'email', subject: 'Re: Quick question', content: 'Following up on my previous note...' }] },
+  { id: 'seq2', name: 'Enterprise Warm Outreach', status: 'active', icpTarget: 'Enterprise Tech', prospectsEnrolled: 89, openRate: 41, replyRate: 4.5, meetingsBooked: 3, steps: [{ type: 'email', subject: 'Intro from {{mutualConnection}}', content: 'Hi {{firstName}}...' }] },
+  { id: 'seq3', name: 'Agency Reactivation', status: 'paused', icpTarget: 'SMB Agencies', prospectsEnrolled: 156, openRate: 38, replyRate: 2.1, meetingsBooked: 2, steps: [{ type: 'email', subject: 'Been a while...', content: 'Hi {{firstName}}...' }] },
 ]
 
-const mockExperiments: Experiment[] = [
-  { id: 'e1', name: 'Pain-focused subject lines', hypothesis: 'Subject lines that mention specific pain points will increase open rates', channel: 'Cold Email', status: 'running', metric: 'Open rate: 32% → ?', startDate: '2026-01-15' },
-  { id: 'e2', name: 'Video in LinkedIn DMs', hypothesis: 'Personalized Loom videos in LinkedIn messages will increase reply rates', channel: 'LinkedIn', status: 'completed', result: 'success', metric: 'Reply rate: 8% → 18%', startDate: '2026-01-01' },
-  { id: 'e3', name: 'SEO long-form content', hypothesis: 'Publishing in-depth guides will generate more organic leads', channel: 'Content', status: 'running', metric: 'Organic leads: 5/mo → ?', startDate: '2026-01-10' },
+const mockCohorts: ActivationCohort[] = [
+  { id: 'c1', name: 'Jan 2026 Signups', signups: 342, activated: 156, upgraded: 28, topDropoff: 'First integration connect', avgTimeToActivation: 2.4 },
+  { id: 'c2', name: 'Dec 2025 Signups', signups: 289, activated: 134, upgraded: 31, topDropoff: 'Team invite step', avgTimeToActivation: 3.1 },
 ]
 
-// Helper Components
-const stageColors: Record<Lead['stage'], string> = {
-  'cold': 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300',
-  'contacted': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  'replied': 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  'call-scheduled': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  'demo': 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  'negotiating': 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-400',
-  'won': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  'lost': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-}
+const mockExperiments: GtmExperiment[] = [
+  { id: 'e1', name: 'LinkedIn DM vs Email', hypothesis: 'LinkedIn DMs get higher reply rates for enterprise', channel: 'LinkedIn', status: 'running', startDate: '2026-01-10', metric: 'Reply Rate', baseline: 4.5, current: 7.2 },
+  { id: 'e2', name: 'Product-led landing page', hypothesis: 'Interactive demo increases signup rate', channel: 'Website', status: 'completed', startDate: '2025-12-01', metric: 'Signup Rate', baseline: 2.1, current: 3.8, result: 'win' },
+  { id: 'e3', name: 'Shorter onboarding flow', hypothesis: 'Fewer steps = higher activation', channel: 'Product', status: 'running', startDate: '2026-01-15', metric: 'Activation Rate', baseline: 45, current: 52 },
+]
 
-const stageLabels: Record<Lead['stage'], string> = {
-  'cold': 'Cold',
-  'contacted': 'Contacted',
-  'replied': 'Replied',
-  'call-scheduled': 'Call Scheduled',
-  'demo': 'Demo',
-  'negotiating': 'Negotiating',
-  'won': 'Won',
-  'lost': 'Lost',
-}
-
-function StageBadge({ stage }: { stage: Lead['stage'] }) {
-  return (
-    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${stageColors[stage]}`}>
-      {stageLabels[stage]}
-    </span>
-  )
-}
-
-function getDaysAgo(dateStr: string): string {
-  const date = new Date(dateStr)
-  const today = new Date()
-  const diff = Math.floor((today.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-  if (diff === 0) return 'Today'
-  if (diff === 1) return 'Yesterday'
-  return `${diff} days ago`
-}
+const mockThemes: SupportTheme[] = [
+  { id: 't1', theme: 'Integration setup confusion', ticketCount: 23, avgSentiment: 0.4, topPhrases: ['how do I connect', 'integration not working', 'OAuth error'], suggestedAction: 'Add integration setup wizard' },
+  { id: 't2', theme: 'Pricing questions', ticketCount: 18, avgSentiment: 0.6, topPhrases: ['what plan do I need', 'enterprise pricing', 'annual discount'], suggestedAction: 'Create pricing comparison page' },
+  { id: 't3', theme: 'Feature requests - reporting', ticketCount: 15, avgSentiment: 0.7, topPhrases: ['custom reports', 'export data', 'dashboard'], suggestedAction: 'Prioritize reporting roadmap' },
+]
 
 export default function GTMPage() {
-  const [selectedStage, setSelectedStage] = useState<Lead['stage'] | 'all'>('all')
-  const [showAddLead, setShowAddLead] = useState(false)
-  const [showTemplates, setShowTemplates] = useState(false)
-  const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null)
-  const [aiResponse, setAiResponse] = useState<string | null>(null)
-  const [aiLoading, setAiLoading] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  
+  // Data state
+  const [segments, setSegments] = useState<IcpSegment[]>(mockSegments)
+  const [deals, setDeals] = useState<Deal[]>(mockDeals)
+  const [sequences, setSequences] = useState<OutboundSequence[]>(mockSequences)
+  const [cohorts] = useState<ActivationCohort[]>(mockCohorts)
+  const [experiments, setExperiments] = useState<GtmExperiment[]>(mockExperiments)
+  const [themes] = useState<SupportTheme[]>(mockThemes)
+  
+  // UI state
+  const [activeSection, setActiveSection] = useState<string>('pipeline')
+  const [selectedDeals, setSelectedDeals] = useState<Set<string>>(new Set())
+  const [expandedDeal, setExpandedDeal] = useState<string | null>(null)
+  const [expandedSequence, setExpandedSequence] = useState<string | null>(null)
+  const [expandedExperiment, setExpandedExperiment] = useState<string | null>(null)
+  const [editingIcp, setEditingIcp] = useState<string | null>(null)
+  const [showCommandPalette, setShowCommandPalette] = useState(false)
+  const [commandInput, setCommandInput] = useState('')
+  
+  // AI/Execution state
+  const [aiSuggestion, setAiSuggestion] = useState<{ dealId: string; suggestion: string; draft?: string } | null>(null)
+  const [executingAction, setExecutingAction] = useState<string | null>(null)
+  const [executionSteps, setExecutionSteps] = useState<ExecutionStep[]>([])
 
-  // Pipeline stats
-  const pipelineStages = ['cold', 'contacted', 'replied', 'call-scheduled', 'demo', 'negotiating'] as const
-  const activeLeads = mockLeads.filter(l => !['won', 'lost'].includes(l.stage))
-  const wonLeads = mockLeads.filter(l => l.stage === 'won')
-  const todayActions = mockLeads.filter(l => l.nextAction && l.stage !== 'won' && l.stage !== 'lost')
-  const pipelineValue = activeLeads.reduce((acc, l) => acc + (l.value || 0), 0)
-  const wonValue = wonLeads.reduce((acc, l) => acc + (l.value || 0), 0)
+  useEffect(() => {
+    loadData()
+  }, [])
 
-  // Filter leads
-  const filteredLeads = selectedStage === 'all' 
-    ? mockLeads 
-    : mockLeads.filter(l => l.stage === selectedStage)
-
-  const handleAiQuery = async (query: string) => {
-    setAiLoading(true)
-    await new Promise(r => setTimeout(r, 1500))
-    
-    if (query === 'suggestions') {
-      setAiResponse(
-        `**This Week's Focus:**\n\n` +
-        `1. **Follow up with Emily Watson** (GrowthLabs) - She replied 2 days ago. Strike while hot.\n\n` +
-        `2. **Prepare for Mike's call** at 3pm - Review his company's recent funding news.\n\n` +
-        `3. **Re-engage cold leads** - 3 leads haven't been touched in 5+ days. Consider a different angle.\n\n` +
-        `**Channel Insight:**\n` +
-        `Referrals have 45% conversion vs 8% for cold email. Ask your won customers for intros.`
-      )
-    } else if (query === 'bottleneck') {
-      setAiResponse(
-        `**Biggest Drop-off:** Contacted → Replied (only 35% reply rate)\n\n` +
-        `**Possible Causes:**\n` +
-        `• Subject lines may not be compelling enough\n` +
-        `• Sending at wrong times (most opens happen 8-10am)\n` +
-        `• Message too long or too salesy\n\n` +
-        `**Experiment Idea:**\n` +
-        `Try shorter, curiosity-driven subject lines. Your "Pain-focused" experiment is testing this.`
-      )
+  const loadData = async () => {
+    try {
+      const profileRes = await fetch('/api/profile')
+      const profileData = await profileRes.json()
+      setUser(profileData)
+    } catch (error) {
+      console.error('Error loading data:', error)
+    } finally {
+      setLoading(false)
     }
-    setAiLoading(false)
   }
 
+  // Execute action with visual feedback
+  const executeAction = async (actionId: string, steps: { message: string }[], onComplete: () => void) => {
+    setExecutingAction(actionId)
+    setExecutionSteps(steps.map((s, i) => ({ id: `step-${i}`, message: s.message, status: 'pending' })))
+
+    for (let i = 0; i < steps.length; i++) {
+      setExecutionSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'running' } : s))
+      await new Promise(r => setTimeout(r, 500 + Math.random() * 300))
+      setExecutionSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'complete' } : s))
+    }
+
+    await new Promise(r => setTimeout(r, 300))
+    onComplete()
+    setExecutingAction(null)
+    setExecutionSteps([])
+  }
+
+  // Generate AI suggestion for a deal
+  const generateDealSuggestion = (deal: Deal) => {
+    const suggestions: Record<string, { suggestion: string; draft: string }> = {
+      'd1': {
+        suggestion: 'Deal is in negotiation for 12 days. Recommend sending a "value recap" email highlighting ROI and asking for timeline clarity.',
+        draft: `Hi Sarah,\n\nWanted to follow up on our conversation about the Acme expansion. Based on what you shared about your Q2 goals, here's a quick recap of how we can help:\n\n• 40% reduction in manual ops time\n• Integration with your existing stack\n• Dedicated onboarding support\n\nWhat's the best path to get this wrapped up this month?\n\nBest,\n[Your name]`
+      },
+      'd2': {
+        suggestion: 'High risk: No activity in 5 days post-demo. Recommend a "checking in" message with a specific value prop or case study.',
+        draft: `Hi Mike,\n\nWanted to share a quick case study from another founder in your space who saw 3x improvement in their workflow after implementing our solution.\n\n[Case study link]\n\nWould love to hear your thoughts and answer any questions from the demo.\n\nBest,\n[Your name]`
+      },
+      'd3': {
+        suggestion: 'Champion call scheduled. Prepare a mutual action plan (MAP) document to align on next steps and close timeline.',
+        draft: `# Mutual Action Plan - GlobalCo\n\n**Goal:** Go live by Feb 28\n\n**Week 1:** Champion call + technical review\n**Week 2:** Security/legal review\n**Week 3:** Final approval + signature\n**Week 4:** Kickoff + onboarding\n\n**Open items:**\n- [ ] Technical requirements doc\n- [ ] Pricing approval from Lisa\n- [ ] Legal review timeline`
+      },
+      'd4': {
+        suggestion: 'Stale deal: 18 days in discovery with no recent activity. Recommend a "break up" email to re-engage or qualify out.',
+        draft: `Hi Alex,\n\nI haven't heard back in a while, so I wanted to check if priorities have shifted at StartupX.\n\nNo worries if now isn't the right time—just let me know either way and I'll update my notes accordingly.\n\nIf things have changed and you'd like to pick back up, I'm happy to reconnect.\n\nBest,\n[Your name]`
+      }
+    }
+    
+    setAiSuggestion({ dealId: deal.id, ...suggestions[deal.id] || { suggestion: 'Analyzing deal...', draft: '' } })
+  }
+
+  // Handle command palette actions
+  const handleCommand = (command: string) => {
+    const lowerCommand = command.toLowerCase()
+    
+    if (lowerCommand.includes('draft') && lowerCommand.includes('email')) {
+      if (selectedDeals.size > 0) {
+        const dealId = Array.from(selectedDeals)[0]
+        const deal = deals.find(d => d.id === dealId)
+        if (deal) generateDealSuggestion(deal)
+      }
+    } else if (lowerCommand.includes('pause') && lowerCommand.includes('sequence')) {
+      // Would pause sequences
+    } else if (lowerCommand.includes('create') && lowerCommand.includes('experiment')) {
+      setActiveSection('experiments')
+    }
+    
+    setShowCommandPalette(false)
+    setCommandInput('')
+  }
+
+  // Toggle deal selection
+  const toggleDealSelection = (dealId: string) => {
+    setSelectedDeals(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(dealId)) {
+        newSet.delete(dealId)
+      } else {
+        newSet.add(dealId)
+      }
+      return newSet
+    })
+  }
+
+  // Batch actions for selected deals
+  const handleBatchAction = (action: string) => {
+    if (action === 'draft-followups') {
+      executeAction('batch-draft', [
+        { message: `Analyzing ${selectedDeals.size} selected deals...` },
+        { message: 'Generating personalized follow-ups...' },
+        { message: 'Creating drafts in HubSpot...' },
+        { message: `${selectedDeals.size} email drafts created` },
+      ], () => {
+        setSelectedDeals(new Set())
+      })
+    } else if (action === 'create-tasks') {
+      executeAction('batch-tasks', [
+        { message: 'Creating next-step tasks...' },
+        { message: 'Syncing with HubSpot...' },
+        { message: 'Tasks created' },
+      ], () => {
+        setSelectedDeals(new Set())
+      })
+    }
+  }
+
+  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+  // Quick stats
+  const totalPipeline = deals.reduce((sum, d) => sum + d.amount, 0)
+  const atRiskDeals = deals.filter(d => d.riskLevel === 'high').length
+  const avgActivation = cohorts.length > 0 ? Math.round(cohorts.reduce((sum, c) => sum + (c.activated / c.signups * 100), 0) / cohorts.length) : 0
+
   return (
-    <AppLayout>
+    <AppLayout user={user}>
       <PageBackground>
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 flex items-center justify-between"
+            className="mb-4 sm:mb-6"
           >
-            <div>
-              <h1 className="text-xl font-semibold text-black dark:text-white">Go-To-Market</h1>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                Track leads, run outreach, close deals
-              </p>
-            </div>
-            <button
-              onClick={() => setShowAddLead(true)}
-              className="px-3 py-1.5 bg-black dark:bg-white text-white dark:text-black rounded-lg text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
-            >
-              + Add Lead
-            </button>
-          </motion.div>
-
-          {/* Pipeline Overview */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mb-6 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-black dark:text-white">Pipeline Overview</h2>
-              <div className="flex items-center gap-4 text-xs">
-                <div>
-                  <span className="text-zinc-500">Pipeline Value:</span>
-                  <span className="ml-1 font-semibold text-black dark:text-white">${pipelineValue.toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-zinc-500">Won (MTD):</span>
-                  <span className="ml-1 font-semibold text-green-600 dark:text-green-400">${wonValue.toLocaleString()}</span>
-                </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold text-black dark:text-white mb-1">GTM Command Center</h1>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                  Orchestrate your pipeline, outbound, and activation across tools
+                </p>
               </div>
-            </div>
-
-            {/* Funnel Visualization */}
-            <div className="flex items-center gap-2">
-              {pipelineStages.map((stage, idx) => {
-                const count = mockLeads.filter(l => l.stage === stage).length
-                const maxCount = Math.max(...pipelineStages.map(s => mockLeads.filter(l => l.stage === s).length))
-                const width = maxCount > 0 ? Math.max(20, (count / maxCount) * 100) : 20
-                return (
-                  <div key={stage} className="flex-1">
-                    <div className="text-center mb-1">
-                      <span className="text-lg font-semibold text-black dark:text-white">{count}</span>
-                    </div>
-                    <motion.div
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: 1 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className={`h-2 rounded-full ${
-                        stage === 'cold' ? 'bg-zinc-300 dark:bg-zinc-600' :
-                        stage === 'contacted' ? 'bg-blue-400' :
-                        stage === 'replied' ? 'bg-purple-400' :
-                        stage === 'call-scheduled' ? 'bg-yellow-400' :
-                        stage === 'demo' ? 'bg-orange-400' :
-                        'bg-pink-400'
-                      }`}
-                      style={{ width: `${width}%`, margin: '0 auto' }}
-                    />
-                    <p className="text-xs text-zinc-500 text-center mt-1">{stageLabels[stage]}</p>
-                  </div>
-                )
-              })}
-              <div className="w-px h-12 bg-zinc-200 dark:bg-zinc-700 mx-2" />
-              <div className="text-center">
-                <span className="text-lg font-semibold text-green-600 dark:text-green-400">{wonLeads.length}</span>
-                <div className="h-2 w-12 rounded-full bg-green-400 mx-auto" />
-                <p className="text-xs text-zinc-500 mt-1">Won</p>
-              </div>
-            </div>
-
-            {/* Today's Actions */}
-            {todayActions.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-700">
-                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">📌 Today's Actions</p>
-                <div className="flex flex-wrap gap-2">
-                  {todayActions.slice(0, 4).map(lead => (
-                    <div key={lead.id} className="flex items-center gap-2 px-2 py-1 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
-                      <span className="text-xs font-medium text-black dark:text-white">{lead.name}</span>
-                      <span className="text-xs text-zinc-500">→ {lead.nextAction}</span>
-                    </div>
-                  ))}
-                  {todayActions.length > 4 && (
-                    <span className="text-xs text-zinc-500 px-2 py-1">+{todayActions.length - 4} more</span>
-                  )}
-                </div>
-              </div>
-            )}
-          </motion.div>
-
-          <div className="grid grid-cols-3 gap-6">
-            {/* Left Column - Leads */}
-            <div className="col-span-2 space-y-6">
-              {/* Lead List */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800"
+              <button
+                onClick={() => setShowCommandPalette(true)}
+                className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-lg text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors flex items-center gap-2"
               >
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-black dark:text-white">Leads</h2>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setSelectedStage('all')}
-                      className={`px-2 py-1 text-xs rounded transition-colors ${
-                        selectedStage === 'all' ? 'bg-black dark:bg-white text-white dark:text-black' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                      }`}
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Quick Actions
+                <span className="text-zinc-400 dark:text-zinc-600 text-[10px]">⌘K</span>
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4"
+            >
+              <div className="text-xs text-zinc-500 mb-1">Pipeline Value</div>
+              <div className="text-2xl font-semibold text-black dark:text-white">${(totalPipeline / 1000).toFixed(0)}K</div>
+              <div className="text-xs text-zinc-400">{deals.length} active deals</div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4"
+            >
+              <div className="text-xs text-zinc-500 mb-1">At-Risk Deals</div>
+              <div className="text-2xl font-semibold text-black dark:text-white">{atRiskDeals}</div>
+              <div className="text-xs text-zinc-400">need attention</div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4"
+            >
+              <div className="text-xs text-zinc-500 mb-1">Activation Rate</div>
+              <div className="text-2xl font-semibold text-black dark:text-white">{avgActivation}%</div>
+              <div className="text-xs text-zinc-400">signup → activated</div>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4"
+            >
+              <div className="text-xs text-zinc-500 mb-1">Meetings Booked</div>
+              <div className="text-2xl font-semibold text-black dark:text-white">{sequences.reduce((sum, s) => sum + s.meetingsBooked, 0)}</div>
+              <div className="text-xs text-zinc-400">from sequences</div>
+            </motion.div>
+          </div>
+
+          {/* Section Navigation */}
+          <div className="flex items-center gap-1 mb-4 border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto">
+            {[
+              { id: 'pipeline', label: 'Pipeline' },
+              { id: 'icp', label: 'ICP & Segments' },
+              { id: 'outbound', label: 'Outbound' },
+              { id: 'activation', label: 'Activation' },
+              { id: 'experiments', label: 'Experiments' },
+              { id: 'support', label: 'Support Insights' },
+            ].map((section) => (
+              <button
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                className={`px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                  activeSection === section.id
+                    ? 'border-black dark:border-white text-black dark:text-white'
+                    : 'border-transparent text-zinc-500 hover:text-black dark:hover:text-white'
+                }`}
+              >
+                {section.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Section Content */}
+          <AnimatePresence mode="wait">
+            {/* Pipeline Section */}
+            {activeSection === 'pipeline' && (
+              <motion.div
+                key="pipeline"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                {/* Batch Actions Bar */}
+                <AnimatePresence>
+                  {selectedDeals.size > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="bg-zinc-900 dark:bg-white text-white dark:text-black rounded-lg p-3 flex items-center justify-between"
                     >
-                      All
-                    </button>
-                    {(['contacted', 'replied', 'demo', 'negotiating'] as const).map(stage => (
-                      <button
-                        key={stage}
-                        onClick={() => setSelectedStage(stage)}
-                        className={`px-2 py-1 text-xs rounded transition-colors ${
-                          selectedStage === stage ? 'bg-black dark:bg-white text-white dark:text-black' : 'text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'
-                        }`}
-                      >
-                        {stageLabels[stage]}
-                      </button>
+                      <span className="text-sm font-medium">{selectedDeals.size} deals selected</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleBatchAction('draft-followups')}
+                          className="px-3 py-1.5 bg-white/20 dark:bg-black/20 rounded text-xs font-medium hover:bg-white/30 dark:hover:bg-black/30 transition-colors"
+                        >
+                          Draft Follow-ups
+                        </button>
+                        <button
+                          onClick={() => handleBatchAction('create-tasks')}
+                          className="px-3 py-1.5 bg-white/20 dark:bg-black/20 rounded text-xs font-medium hover:bg-white/30 dark:hover:bg-black/30 transition-colors"
+                        >
+                          Create Tasks
+                        </button>
+                        <button
+                          onClick={() => setSelectedDeals(new Set())}
+                          className="px-2 py-1.5 text-xs hover:bg-white/10 dark:hover:bg-black/10 rounded transition-colors"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Deals List */}
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-black dark:text-white">Pipeline Health</h3>
+                      <p className="text-xs text-zinc-500">Click a deal to see AI recommendations</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                      <span>Data from HubSpot</span>
+                      <div className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                    </div>
+                  </div>
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {deals.map((deal) => (
+                      <div key={deal.id}>
+                        <div
+                          className={`p-4 cursor-pointer transition-colors ${
+                            selectedDeals.has(deal.id) ? 'bg-zinc-100 dark:bg-zinc-900' : 'hover:bg-zinc-50 dark:hover:bg-zinc-900'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            {/* Selection checkbox */}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleDealSelection(deal.id) }}
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ${
+                                selectedDeals.has(deal.id)
+                                  ? 'bg-zinc-900 dark:bg-white border-zinc-900 dark:border-white'
+                                  : 'border-zinc-300 dark:border-zinc-600 hover:border-zinc-400 dark:hover:border-zinc-500'
+                              }`}
+                            >
+                              {selectedDeals.has(deal.id) && (
+                                <svg className="w-3 h-3 text-white dark:text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                            
+                            {/* Deal info */}
+                            <div 
+                              className="flex-1 min-w-0"
+                              onClick={() => { setExpandedDeal(expandedDeal === deal.id ? null : deal.id); generateDealSuggestion(deal) }}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-sm font-medium text-black dark:text-white truncate">{deal.name}</p>
+                                <span className={`px-1.5 py-0.5 text-xs rounded ${
+                                  deal.riskLevel === 'high' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-medium' :
+                                  deal.riskLevel === 'medium' ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400' :
+                                  'bg-zinc-50 dark:bg-zinc-900 text-zinc-500'
+                                }`}>
+                                  {deal.riskLevel === 'high' ? 'At Risk' : deal.riskLevel === 'medium' ? 'Monitor' : 'On Track'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-4 text-xs text-zinc-500">
+                                <span>{deal.company}</span>
+                                <span>${deal.amount.toLocaleString()}</span>
+                                <span>{deal.stage}</span>
+                                <span>{deal.daysInStage}d in stage</span>
+                                <span>Last: {deal.lastActivity}</span>
+                              </div>
+                            </div>
+
+                            {/* Expand indicator */}
+                            <svg
+                              className={`w-4 h-4 text-zinc-400 transition-transform ${expandedDeal === deal.id ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* Expanded Deal View with AI */}
+                        <AnimatePresence>
+                          {expandedDeal === deal.id && aiSuggestion?.dealId === deal.id && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900"
+                            >
+                              <div className="p-4 space-y-4">
+                                {/* AI Recommendation */}
+                                <div className="flex items-start gap-3">
+                                  <div className="w-6 h-6 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center flex-shrink-0">
+                                    <svg className="w-3.5 h-3.5 text-white dark:text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                  </div>
+                                  <div className="flex-1">
+                                    <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">AI Recommendation</p>
+                                    <p className="text-sm text-zinc-600 dark:text-zinc-400">{aiSuggestion.suggestion}</p>
+                                  </div>
+                                </div>
+
+                                {/* Editable Draft */}
+                                {aiSuggestion.draft && (
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Draft (edit before sending)</p>
+                                    <textarea
+                                      defaultValue={aiSuggestion.draft}
+                                      className="w-full h-40 p-3 text-sm bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-black dark:text-white"
+                                    />
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2 text-xs text-zinc-500">
+                                        <span>Will send via HubSpot to {deal.contacts[0]?.name}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <button className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors">
+                                          Save as Draft
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            executeAction(`send-${deal.id}`, [
+                                              { message: 'Preparing email...' },
+                                              { message: 'Creating draft in HubSpot...' },
+                                              { message: 'Email queued for sending' },
+                                            ], () => setExpandedDeal(null))
+                                          }}
+                                          className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                                        >
+                                          Send via HubSpot
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Quick Actions */}
+                                <div className="flex items-center gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                                  <button
+                                    onClick={() => {
+                                      executeAction(`task-${deal.id}`, [
+                                        { message: 'Creating task in HubSpot...' },
+                                        { message: 'Task created' },
+                                      ], () => {})
+                                    }}
+                                    className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                                  >
+                                    Create Follow-up Task
+                                  </button>
+                                  <button className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors">
+                                    Schedule Meeting
+                                  </button>
+                                  <button className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors">
+                                    View in HubSpot
+                                  </button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
                     ))}
                   </div>
                 </div>
-                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                  {filteredLeads.map((lead, idx) => (
-                    <motion.div
-                      key={lead.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.03 }}
-                      className="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-white text-sm font-medium">
-                            {lead.name.split(' ').map(n => n[0]).join('')}
-                          </div>
-                          <div>
+              </motion.div>
+            )}
+
+            {/* ICP & Segments Section */}
+            {activeSection === 'icp' && (
+              <motion.div
+                key="icp"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                    <h3 className="text-sm font-semibold text-black dark:text-white">ICP Performance</h3>
+                    <p className="text-xs text-zinc-500">Click a segment to edit or see recommendations</p>
+                  </div>
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {segments.map((segment) => (
+                      <div key={segment.id} className="p-4">
+                        <div
+                          className="cursor-pointer"
+                          onClick={() => setEditingIcp(editingIcp === segment.id ? null : segment.id)}
+                        >
+                          <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-medium text-black dark:text-white">{lead.name}</p>
-                              <StageBadge stage={lead.stage} />
+                              <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                segment.tier === 1 ? 'bg-zinc-900 dark:bg-white text-white dark:text-black' :
+                                segment.tier === 2 ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300' :
+                                'bg-zinc-100 dark:bg-zinc-900 text-zinc-500'
+                              }`}>
+                                Tier {segment.tier}
+                              </span>
+                              <h4 className="text-sm font-medium text-black dark:text-white">{segment.name}</h4>
                             </div>
-                            <p className="text-xs text-zinc-500">{lead.title} at {lead.company}</p>
-                            {lead.nextAction && lead.stage !== 'won' && lead.stage !== 'lost' && (
-                              <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
-                                <span>→</span> {lead.nextAction}
-                              </p>
-                            )}
+                            <span className="text-xs text-zinc-500">{segment.accountCount} accounts</span>
+                          </div>
+                          <p className="text-xs text-zinc-500 mb-3">{segment.description}</p>
+                          <div className="flex items-center gap-6 text-xs">
+                            <div>
+                              <span className="text-zinc-400">Win Rate</span>
+                              <span className="ml-2 font-medium text-black dark:text-white">{segment.winRate}%</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400">Avg Deal</span>
+                              <span className="ml-2 font-medium text-black dark:text-white">${segment.avgDealSize.toLocaleString()}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400">Retention</span>
+                              <span className="ml-2 font-medium text-black dark:text-white">{segment.retention}%</span>
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-zinc-400">{getDaysAgo(lead.lastTouch)}</p>
-                          {lead.value && (
-                            <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mt-1">
-                              ${lead.value.toLocaleString()}
-                            </p>
+
+                        {/* Expanded Edit View */}
+                        <AnimatePresence>
+                          {editingIcp === segment.id && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800"
+                            >
+                              <div className="space-y-4">
+                                {/* Attributes */}
+                                <div>
+                                  <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">Defining Attributes</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {segment.attributes.map((attr, i) => (
+                                      <span key={i} className="px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs rounded flex items-center gap-1">
+                                        {attr}
+                                        <button className="hover:text-black dark:hover:text-white">
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                          </svg>
+                                        </button>
+                                      </span>
+                                    ))}
+                                    <button className="px-2 py-1 border border-dashed border-zinc-300 dark:border-zinc-700 text-zinc-500 text-xs rounded hover:border-zinc-400 dark:hover:border-zinc-600 transition-colors">
+                                      + Add
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => {
+                                      executeAction(`tag-${segment.id}`, [
+                                        { message: 'Scanning HubSpot companies...' },
+                                        { message: `Found ${segment.accountCount + 12} matching accounts...` },
+                                        { message: 'Applying ICP tags...' },
+                                        { message: 'Tags applied in HubSpot' },
+                                      ], () => setEditingIcp(null))
+                                    }}
+                                    className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                                  >
+                                    Auto-tag in HubSpot
+                                  </button>
+                                  <button className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors">
+                                    Generate Messaging
+                                  </button>
+                                  <button className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors">
+                                    Create Sequence
+                                  </button>
+                                </div>
+                              </div>
+                            </motion.div>
                           )}
-                          <p className="text-xs text-zinc-400 mt-1">{lead.source}</p>
-                        </div>
+                        </AnimatePresence>
                       </div>
-                    </motion.div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </motion.div>
+            )}
 
-              {/* Channel Performance */}
+            {/* Outbound Section */}
+            {activeSection === 'outbound' && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                key="outbound"
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800"
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
               >
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-                  <h2 className="text-sm font-semibold text-black dark:text-white">Channel Performance</h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                        <th className="px-4 py-2 text-left text-xs font-medium text-zinc-500">Channel</th>
-                        <th className="px-4 py-2 text-right text-xs font-medium text-zinc-500">Leads</th>
-                        <th className="px-4 py-2 text-right text-xs font-medium text-zinc-500">Conv %</th>
-                        <th className="px-4 py-2 text-right text-xs font-medium text-zinc-500">CAC</th>
-                        <th className="px-4 py-2 text-right text-xs font-medium text-zinc-500">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                      {mockChannels.map(channel => (
-                        <tr key={channel.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                          <td className="px-4 py-3">
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-black dark:text-white">Sequence Performance</h3>
+                      <p className="text-xs text-zinc-500">Data from Apollo</p>
+                    </div>
+                    <button className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors">
+                      Create Sequence
+                    </button>
+                  </div>
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {sequences.map((seq) => (
+                      <div key={seq.id}>
+                        <div
+                          className="p-4 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+                          onClick={() => setExpandedSequence(expandedSequence === seq.id ? null : seq.id)}
+                        >
+                          <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
-                              <span>{channel.icon}</span>
-                              <span className="text-sm text-black dark:text-white">{channel.name}</span>
+                              <h4 className="text-sm font-medium text-black dark:text-white">{seq.name}</h4>
+                              <span className={`px-1.5 py-0.5 text-xs rounded ${
+                                seq.status === 'active' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black' :
+                                seq.status === 'paused' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400' :
+                                'bg-zinc-100 dark:bg-zinc-900 text-zinc-500'
+                              }`}>
+                                {seq.status}
+                              </span>
                             </div>
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm text-black dark:text-white">{channel.leads}</td>
-                          <td className="px-4 py-3 text-right">
-                            <span className={`text-sm ${channel.conversion >= 20 ? 'text-green-600 dark:text-green-400' : channel.conversion >= 10 ? 'text-yellow-600 dark:text-yellow-400' : 'text-zinc-600 dark:text-zinc-400'}`}>
-                              {channel.conversion}%
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm text-zinc-600 dark:text-zinc-400">
-                            {channel.cac === 0 ? 'Free' : `$${channel.cac}`}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <span className={`px-2 py-0.5 text-xs rounded-full ${
-                              channel.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                              channel.status === 'testing' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                              'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
-                            }`}>
-                              {channel.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
-
-              {/* Experiments */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800"
-              >
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-black dark:text-white">Experiments</h2>
-                  <button className="text-xs text-zinc-500 hover:text-black dark:hover:text-white transition-colors">
-                    + New Experiment
-                  </button>
-                </div>
-                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                  {mockExperiments.map(exp => (
-                    <div key={exp.id} className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-black dark:text-white">{exp.name}</p>
-                            <span className={`px-2 py-0.5 text-xs rounded-full ${
-                              exp.status === 'running' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                              exp.status === 'completed' && exp.result === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                              'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400'
-                            }`}>
-                              {exp.status === 'completed' ? `✓ ${exp.result}` : exp.status}
-                            </span>
-                          </div>
-                          <p className="text-xs text-zinc-500 mt-1">{exp.hypothesis}</p>
-                        </div>
-                        <span className="text-xs text-zinc-400">{exp.channel}</span>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs">
-                        <span className="text-zinc-500">📊 {exp.metric}</span>
-                        <span className="text-zinc-400">Started {new Date(exp.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
-
-            {/* Right Column - Sidebar */}
-            <div className="space-y-6">
-              {/* Outreach Templates */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800"
-              >
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-black dark:text-white flex items-center gap-2">
-                    <span>📝</span> Outreach Templates
-                  </h2>
-                  <button
-                    onClick={() => setShowTemplates(!showTemplates)}
-                    className="text-xs text-zinc-500 hover:text-black dark:hover:text-white transition-colors"
-                  >
-                    {showTemplates ? 'Collapse' : 'Expand'}
-                  </button>
-                </div>
-                <div className="p-4 space-y-2">
-                  {mockTemplates.map(template => (
-                    <div key={template.id}>
-                      <button
-                        onClick={() => setExpandedTemplate(expandedTemplate === template.id ? null : template.id)}
-                        className="w-full text-left p-3 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm">{template.type === 'email' ? '📧' : template.type === 'linkedin' ? '💼' : '🐦'}</span>
-                            <span className="text-sm font-medium text-black dark:text-white">{template.name}</span>
-                          </div>
-                          <span className="text-xs text-zinc-400">{template.useCount} uses</span>
-                        </div>
-                      </button>
-                      <AnimatePresence>
-                        {expandedTemplate === template.id && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="mt-2 p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg"
-                          >
-                            {template.subject && (
-                              <p className="text-xs text-zinc-500 mb-2">
-                                <span className="font-medium">Subject:</span> {template.subject}
-                              </p>
-                            )}
-                            <p className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-pre-line">{template.content}</p>
-                            <button className="mt-2 text-xs text-orange-600 dark:text-orange-400 hover:underline">
-                              Copy template
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-
-              {/* AI GTM Assistant */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/10 rounded-xl border border-orange-200 dark:border-orange-800"
-              >
-                <div className="px-4 py-3 border-b border-orange-200 dark:border-orange-800 flex items-center gap-2">
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="w-2 h-2 rounded-full bg-orange-500"
-                  />
-                  <h2 className="text-sm font-semibold text-black dark:text-white">GTM Assistant</h2>
-                </div>
-                <div className="p-4 space-y-3">
-                  <button
-                    onClick={() => handleAiQuery('suggestions')}
-                    disabled={aiLoading}
-                    className="w-full text-left p-3 bg-white dark:bg-zinc-900 rounded-lg border border-orange-200 dark:border-orange-700 hover:border-orange-400 transition-colors text-xs"
-                  >
-                    <span className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
-                      <span>🎯</span> What should I focus on today?
-                    </span>
-                  </button>
-                  
-                  <button
-                    onClick={() => handleAiQuery('bottleneck')}
-                    disabled={aiLoading}
-                    className="w-full text-left p-3 bg-white dark:bg-zinc-900 rounded-lg border border-orange-200 dark:border-orange-700 hover:border-orange-400 transition-colors text-xs"
-                  >
-                    <span className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
-                      <span>📉</span> Where's my biggest bottleneck?
-                    </span>
-                  </button>
-
-                  <AnimatePresence>
-                    {aiLoading && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="flex items-center gap-2 p-3"
-                      >
-                        <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                          className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full"
-                        />
-                        <span className="text-xs text-zinc-500">Analyzing your pipeline...</span>
-                      </motion.div>
-                    )}
-                    {aiResponse && !aiLoading && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        className="bg-white dark:bg-zinc-900 rounded-lg p-3 border border-orange-200 dark:border-orange-700"
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <span className="text-xs font-medium text-orange-600 dark:text-orange-400">AI Suggestions</span>
-                          <button onClick={() => setAiResponse(null)} className="text-zinc-400 hover:text-zinc-600">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <svg
+                              className={`w-4 h-4 text-zinc-400 transition-transform ${expandedSequence === seq.id ? 'rotate-180' : ''}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
-                          </button>
+                          </div>
+                          <div className="flex items-center gap-6 text-xs">
+                            <div>
+                              <span className="text-zinc-400">Target</span>
+                              <span className="ml-2 text-zinc-600 dark:text-zinc-400">{seq.icpTarget}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400">Enrolled</span>
+                              <span className="ml-2 font-medium text-black dark:text-white">{seq.prospectsEnrolled}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400">Open</span>
+                              <span className="ml-2 font-medium text-black dark:text-white">{seq.openRate}%</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400">Reply</span>
+                              <span className="ml-2 font-medium text-black dark:text-white">{seq.replyRate}%</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400">Meetings</span>
+                              <span className="ml-2 font-medium text-black dark:text-white">{seq.meetingsBooked}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-pre-line leading-relaxed">
-                          {aiResponse.split('\n').map((line, i) => {
-                            if (line.startsWith('**') && line.includes(':**')) {
-                              const parts = line.split(':**')
-                              return <p key={i} className="mt-2 first:mt-0"><strong>{parts[0].replace(/\*\*/g, '')}:</strong>{parts[1]}</p>
-                            }
-                            if (line.startsWith('**')) {
-                              return <p key={i} className="font-semibold mt-2 first:mt-0">{line.replace(/\*\*/g, '')}</p>
-                            }
-                            return <p key={i}>{line}</p>
-                          })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
 
-              {/* Quick Stats */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4"
-              >
-                <h2 className="text-sm font-semibold text-black dark:text-white mb-3">Quick Stats</h2>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-500">Leads this month</span>
-                    <span className="text-sm font-medium text-black dark:text-white">{mockLeads.length}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-500">Active conversations</span>
-                    <span className="text-sm font-medium text-black dark:text-white">{activeLeads.length}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-500">Win rate</span>
-                    <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                      {Math.round((wonLeads.length / (wonLeads.length + mockLeads.filter(l => l.stage === 'lost').length || 1)) * 100)}%
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-500">Avg deal size</span>
-                    <span className="text-sm font-medium text-black dark:text-white">
-                      ${Math.round(pipelineValue / (activeLeads.filter(l => l.value).length || 1)).toLocaleString()}
-                    </span>
+                        {/* Expanded Sequence View */}
+                        <AnimatePresence>
+                          {expandedSequence === seq.id && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-4"
+                            >
+                              <div className="space-y-4">
+                                {/* Sequence Steps */}
+                                <div>
+                                  <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">Sequence Steps</p>
+                                  <div className="space-y-2">
+                                    {seq.steps.map((step, i) => (
+                                      <div key={i} className="p-3 bg-white dark:bg-zinc-950 rounded border border-zinc-200 dark:border-zinc-800">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-xs font-medium text-zinc-500">Step {i + 1}: {step.type}</span>
+                                          <button className="text-xs text-zinc-500 hover:text-black dark:hover:text-white transition-colors">
+                                            Edit
+                                          </button>
+                                        </div>
+                                        {step.subject && <p className="text-sm font-medium text-black dark:text-white mb-1">{step.subject}</p>}
+                                        <p className="text-xs text-zinc-500 truncate">{step.content}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex items-center gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                                  {seq.status === 'active' ? (
+                                    <button
+                                      onClick={() => {
+                                        executeAction(`pause-${seq.id}`, [
+                                          { message: 'Pausing sequence in Apollo...' },
+                                          { message: 'Sequence paused' },
+                                        ], () => {
+                                          setSequences(prev => prev.map(s => s.id === seq.id ? { ...s, status: 'paused' } : s))
+                                        })
+                                      }}
+                                      className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                                    >
+                                      Pause Sequence
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        executeAction(`resume-${seq.id}`, [
+                                          { message: 'Resuming sequence in Apollo...' },
+                                          { message: 'Sequence active' },
+                                        ], () => {
+                                          setSequences(prev => prev.map(s => s.id === seq.id ? { ...s, status: 'active' } : s))
+                                        })
+                                      }}
+                                      className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                                    >
+                                      Resume Sequence
+                                    </button>
+                                  )}
+                                  <button className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors">
+                                    Generate Variant
+                                  </button>
+                                  <button className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors">
+                                    View in Apollo
+                                  </button>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </motion.div>
-            </div>
-          </div>
+            )}
+
+            {/* Activation Section */}
+            {activeSection === 'activation' && (
+              <motion.div
+                key="activation"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                {/* Activation Funnel */}
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
+                  <h3 className="text-sm font-semibold text-black dark:text-white mb-4">Activation Funnel</h3>
+                  <div className="flex items-end justify-between gap-4 h-32">
+                    {['Signup', 'First Action', 'Activated', 'Upgraded'].map((stage, i) => {
+                      const heights = [100, 72, 45, 18]
+                      const values = [342, 246, 156, 28]
+                      return (
+                        <div key={stage} className="flex-1 flex flex-col items-center">
+                          <div
+                            className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-t transition-all hover:bg-zinc-300 dark:hover:bg-zinc-700 cursor-pointer"
+                            style={{ height: `${heights[i]}%` }}
+                          />
+                          <div className="mt-2 text-center">
+                            <p className="text-xs text-zinc-500">{stage}</p>
+                            <p className="text-sm font-medium text-black dark:text-white">{values[i]}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Cohort Performance */}
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                    <h3 className="text-sm font-semibold text-black dark:text-white">Cohort Performance</h3>
+                    <p className="text-xs text-zinc-500">Data from PostHog + Intercom</p>
+                  </div>
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {cohorts.map((cohort) => {
+                      const activationRate = Math.round((cohort.activated / cohort.signups) * 100)
+                      const upgradeRate = Math.round((cohort.upgraded / cohort.signups) * 100)
+                      
+                      return (
+                        <div key={cohort.id} className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h4 className="text-sm font-medium text-black dark:text-white">{cohort.name}</h4>
+                              <p className="text-xs text-zinc-500">{cohort.signups} signups</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-black dark:text-white">{activationRate}% activated</p>
+                              <p className="text-xs text-zinc-500">{upgradeRate}% upgraded</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <div className="flex-1">
+                              <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-zinc-900 dark:bg-white" style={{ width: `${activationRate}%` }} />
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-zinc-500">Drop-off: {cohort.topDropoff}</span>
+                              <button
+                                onClick={() => {
+                                  executeAction(`rescue-${cohort.id}`, [
+                                    { message: 'Identifying non-activated users...' },
+                                    { message: 'Generating personalized outreach...' },
+                                    { message: 'Creating Intercom campaign...' },
+                                    { message: 'Rescue campaign launched' },
+                                  ], () => {})
+                                }}
+                                className="px-2 py-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                              >
+                                Launch Rescue
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Experiments Section */}
+            {activeSection === 'experiments' && (
+              <motion.div
+                key="experiments"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-black dark:text-white">GTM Experiments</h3>
+                      <p className="text-xs text-zinc-500">Track what's working across channels</p>
+                    </div>
+                    <button className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors">
+                      New Experiment
+                    </button>
+                  </div>
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {experiments.map((exp) => {
+                      const change = exp.current - exp.baseline
+                      const changePercent = Math.round((change / exp.baseline) * 100)
+                      
+                      return (
+                        <div key={exp.id}>
+                          <div
+                            className="p-4 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
+                            onClick={() => setExpandedExperiment(expandedExperiment === exp.id ? null : exp.id)}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-medium text-black dark:text-white">{exp.name}</h4>
+                                <span className={`px-1.5 py-0.5 text-xs rounded ${
+                                  exp.status === 'running' ? 'bg-zinc-900 dark:bg-white text-white dark:text-black' :
+                                  exp.result === 'win' ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300' :
+                                  'bg-zinc-100 dark:bg-zinc-900 text-zinc-500'
+                                }`}>
+                                  {exp.status === 'running' ? 'Running' : exp.result === 'win' ? 'Winner' : exp.result}
+                                </span>
+                              </div>
+                              <span className="text-xs text-zinc-500">{exp.channel}</span>
+                            </div>
+                            <p className="text-xs text-zinc-500 mb-2">{exp.hypothesis}</p>
+                            <div className="flex items-center gap-4 text-xs">
+                              <div>
+                                <span className="text-zinc-400">{exp.metric}</span>
+                                <span className="ml-2 font-medium text-black dark:text-white">
+                                  {exp.baseline}% → {exp.current}%
+                                </span>
+                                <span className={`ml-2 ${changePercent > 0 ? 'text-zinc-700 dark:text-zinc-300' : 'text-zinc-500'}`}>
+                                  ({changePercent > 0 ? '+' : ''}{changePercent}%)
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Expanded Experiment View */}
+                          <AnimatePresence>
+                            {expandedExperiment === exp.id && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-4"
+                              >
+                                <div className="space-y-4">
+                                  {/* Results */}
+                                  <div className="grid grid-cols-3 gap-4">
+                                    <div className="p-3 bg-white dark:bg-zinc-950 rounded border border-zinc-200 dark:border-zinc-800">
+                                      <p className="text-xs text-zinc-500 mb-1">Baseline</p>
+                                      <p className="text-lg font-medium text-black dark:text-white">{exp.baseline}%</p>
+                                    </div>
+                                    <div className="p-3 bg-white dark:bg-zinc-950 rounded border border-zinc-200 dark:border-zinc-800">
+                                      <p className="text-xs text-zinc-500 mb-1">Current</p>
+                                      <p className="text-lg font-medium text-black dark:text-white">{exp.current}%</p>
+                                    </div>
+                                    <div className="p-3 bg-white dark:bg-zinc-950 rounded border border-zinc-200 dark:border-zinc-800">
+                                      <p className="text-xs text-zinc-500 mb-1">Lift</p>
+                                      <p className="text-lg font-medium text-black dark:text-white">
+                                        {changePercent > 0 ? '+' : ''}{changePercent}%
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  {/* Actions */}
+                                  <div className="flex items-center gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                                    {exp.status === 'running' && (
+                                      <>
+                                        <button
+                                          onClick={() => {
+                                            setExperiments(prev => prev.map(e => e.id === exp.id ? { ...e, status: 'completed', result: 'win' } : e))
+                                            setExpandedExperiment(null)
+                                          }}
+                                          className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                                        >
+                                          Mark as Winner
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setExperiments(prev => prev.map(e => e.id === exp.id ? { ...e, status: 'completed', result: 'lose' } : e))
+                                            setExpandedExperiment(null)
+                                          }}
+                                          className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                                        >
+                                          Mark as Loss
+                                        </button>
+                                      </>
+                                    )}
+                                    {exp.result === 'win' && (
+                                      <button className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors">
+                                        Scale This
+                                      </button>
+                                    )}
+                                    <button className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors">
+                                      Document Learnings
+                                    </button>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Support Insights Section */}
+            {activeSection === 'support' && (
+              <motion.div
+                key="support"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                    <h3 className="text-sm font-semibold text-black dark:text-white">Support Themes</h3>
+                    <p className="text-xs text-zinc-500">Patterns from Zendesk + Intercom</p>
+                  </div>
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {themes.map((theme) => (
+                      <div key={theme.id} className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h4 className="text-sm font-medium text-black dark:text-white">{theme.theme}</h4>
+                            <p className="text-xs text-zinc-500">{theme.ticketCount} tickets this month</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-zinc-500">Sentiment</p>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((i) => (
+                                <div
+                                  key={i}
+                                  className={`w-2 h-2 rounded-full ${
+                                    i <= Math.round(theme.avgSentiment * 5) ? 'bg-zinc-900 dark:bg-white' : 'bg-zinc-200 dark:bg-zinc-800'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {theme.topPhrases.map((phrase, i) => (
+                            <span key={i} className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-xs rounded">
+                              "{phrase}"
+                            </span>
+                          ))}
+                        </div>
+                        {theme.suggestedAction && (
+                          <div className="flex items-center justify-between p-2 bg-zinc-50 dark:bg-zinc-900 rounded">
+                            <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                              Suggested: {theme.suggestedAction}
+                            </span>
+                            <button className="px-2 py-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors">
+                              Create Task
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Add Lead Modal */}
+        {/* Command Palette */}
         <AnimatePresence>
-          {showAddLead && (
+          {showCommandPalette && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-              onClick={() => setShowAddLead(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center pt-32 z-50"
+              onClick={() => setShowCommandPalette(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -20 }}
+                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full max-w-lg shadow-2xl"
+                onClick={e => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-3 p-4 border-b border-zinc-200 dark:border-zinc-800">
+                  <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={commandInput}
+                    onChange={(e) => setCommandInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCommand(commandInput)}
+                    placeholder="Type a command... (e.g., 'draft email for selected deals')"
+                    className="flex-1 bg-transparent text-sm text-black dark:text-white placeholder-zinc-400 focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+                <div className="p-2 max-h-64 overflow-y-auto">
+                  <p className="px-2 py-1 text-xs text-zinc-400">Quick actions</p>
+                  {[
+                    { label: 'Draft follow-up emails for at-risk deals', action: 'draft-atrisk' },
+                    { label: 'Create tasks for stale deals', action: 'tasks-stale' },
+                    { label: 'Pause underperforming sequences', action: 'pause-low' },
+                    { label: 'Launch rescue campaign for non-activated users', action: 'rescue-all' },
+                    { label: 'Generate ICP messaging variants', action: 'icp-messaging' },
+                  ].map((cmd) => (
+                    <button
+                      key={cmd.action}
+                      onClick={() => handleCommand(cmd.label)}
+                      className="w-full px-3 py-2 text-left text-sm text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded transition-colors"
+                    >
+                      {cmd.label}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Execution Overlay */}
+        <AnimatePresence>
+          {executingAction && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
             >
               <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full max-w-md shadow-2xl"
-                onClick={e => e.stopPropagation()}
+                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6"
               >
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-black dark:text-white">Add New Lead</h2>
-                  <button onClick={() => setShowAddLead(false)} className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded">
-                    <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="p-4 space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Name *</label>
-                    <input type="text" placeholder="John Doe" className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Company *</label>
-                      <input type="text" placeholder="Acme Inc" className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white" />
+                <div className="space-y-3">
+                  {executionSteps.map((step) => (
+                    <div key={step.id} className="flex items-center gap-3">
+                      {step.status === 'pending' && (
+                        <div className="w-5 h-5 rounded-full border-2 border-zinc-300 dark:border-zinc-600" />
+                      )}
+                      {step.status === 'running' && (
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                          className="w-5 h-5 rounded-full border-2 border-zinc-900 dark:border-white border-t-transparent"
+                        />
+                      )}
+                      {step.status === 'complete' && (
+                        <div className="w-5 h-5 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white dark:text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      )}
+                      <span className={`text-sm ${
+                        step.status === 'complete' ? 'text-zinc-500' :
+                        step.status === 'running' ? 'text-black dark:text-white' : 'text-zinc-400'
+                      }`}>
+                        {step.message}
+                      </span>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Title</label>
-                      <input type="text" placeholder="CEO" className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Email</label>
-                    <input type="email" placeholder="john@acme.com" className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Source</label>
-                    <select className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white">
-                      <option>LinkedIn</option>
-                      <option>Cold Email</option>
-                      <option>Referral</option>
-                      <option>Content</option>
-                      <option>Conference</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Notes</label>
-                    <textarea placeholder="How did you meet? Any context?" className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white h-20 resize-none" />
-                  </div>
-                </div>
-                <div className="px-4 py-3 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-2">
-                  <button onClick={() => setShowAddLead(false)} className="px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
-                    Cancel
-                  </button>
-                  <button className="px-3 py-1.5 bg-black dark:bg-white text-white dark:text-black text-xs font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors">
-                    Add Lead
-                  </button>
+                  ))}
                 </div>
               </motion.div>
             </motion.div>

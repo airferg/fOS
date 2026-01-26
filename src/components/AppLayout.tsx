@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import ThemeToggle from './ThemeToggle'
-import AIChatAssistant from './AIChatAssistant'
 import { Icons, IconName } from './Icons'
 import HydraLogo from './HydraLogo'
 
@@ -111,8 +110,6 @@ export default function AppLayout({ children, user }: AppLayoutProps) {
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
 
-      {/* AI Chat Assistant */}
-      <AIChatAssistant />
     </div>
   )
 }

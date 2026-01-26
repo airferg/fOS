@@ -49,7 +49,7 @@ interface DashboardStats {
 
 interface DashboardCard {
   id: string
-  type: 'activity' | 'marketing' | 'team' | 'tools' | 'funding' | 'network'
+  type: 'activity' | 'gtm' | 'team' | 'tools' | 'funding' | 'network' | 'product' | 'compliance'
   title: string
   component: React.ReactNode
 }
@@ -118,9 +118,11 @@ export default function DashboardPage() {
     'network',
     'team',
     'tools',
-    'kpi-funding',
+    'funding',
     'activity',
-    'marketing'
+    'gtm',
+    'product',
+    'compliance'
   ])
   const [showLayoutDrawer, setShowLayoutDrawer] = useState(false)
 
@@ -140,7 +142,17 @@ export default function DashboardPage() {
     }
     const savedOrder = localStorage.getItem('dashboardCardOrder')
     if (savedOrder) {
-      setCards(JSON.parse(savedOrder))
+      const parsed = JSON.parse(savedOrder) as string[]
+      // Define all available cards (use 'funding' not 'kpi-funding' to avoid duplicates)
+      const allCards = ['network', 'team', 'tools', 'funding', 'activity', 'gtm', 'product', 'compliance']
+      // Remove deprecated cards: 'marketing' (renamed to 'gtm'), 'kpi-funding' (use 'funding')
+      const filtered = parsed.filter(c => c !== 'marketing' && c !== 'kpi-funding')
+      // Add any new cards that aren't in saved order
+      const missingCards = allCards.filter(c => !filtered.includes(c))
+      const newOrder = [...filtered, ...missingCards]
+      // Save the cleaned up order
+      localStorage.setItem('dashboardCardOrder', JSON.stringify(newOrder))
+      setCards(newOrder)
     }
   }, [])
 
@@ -376,28 +388,6 @@ export default function DashboardPage() {
         )}
       </div>
     ),
-    'kpi-funding': (
-      <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md rounded-xl p-4 border border-zinc-200/50 dark:border-zinc-800/50 shadow-lg shadow-black/5">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs text-zinc-600 dark:text-zinc-400">Total Raised</span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              router.push('/funding')
-            }}
-            className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
-          >
-            View details
-          </button>
-        </div>
-        <div className="text-2xl font-semibold text-black dark:text-white mb-1">
-          {stats.totalRaised > 0 ? `$${(stats.totalRaised / 1000).toFixed(1)}K` : '$0'}
-        </div>
-        <div className="text-xs text-zinc-500 dark:text-zinc-400">
-          {stats.fundingStage || 'Not yet funded'}
-        </div>
-      </div>
-    ),
     activity: (
       <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-lg shadow-black/5 h-full">
         <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
@@ -419,11 +409,11 @@ export default function DashboardPage() {
         </div>
       </div>
     ),
-    marketing: (
+    gtm: (
       <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-lg shadow-black/5 h-full">
         <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-black dark:text-white">
-            Marketing Overview
+            GTM Overview
           </h3>
           <button
             onClick={(e) => {
@@ -438,33 +428,117 @@ export default function DashboardPage() {
         <div className="p-4">
           <div className="space-y-3 mb-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-zinc-600 dark:text-zinc-400">Total Reach</span>
-              <span className="text-base font-semibold text-black dark:text-white">
-                {(stats.marketingReach / 1000).toFixed(1)}K
-              </span>
+              <span className="text-xs text-zinc-600 dark:text-zinc-400">Pipeline Deals</span>
+              <span className="text-base font-semibold text-black dark:text-white">12</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-zinc-600 dark:text-zinc-400">Engagement Rate</span>
-              <span className="text-base font-semibold text-black dark:text-white">
-                {stats.engagementRate}%
-              </span>
+              <span className="text-xs text-zinc-600 dark:text-zinc-400">Active Sequences</span>
+              <span className="text-base font-semibold text-black dark:text-white">3</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-zinc-600 dark:text-zinc-400">Weekly Growth</span>
-              <span className="text-base font-semibold text-green-600 dark:text-green-400">
-                +{stats.weeklyGrowth}%
-              </span>
+              <span className="text-xs text-zinc-600 dark:text-zinc-400">Activation Rate</span>
+              <span className="text-base font-semibold text-black dark:text-white">68%</span>
             </div>
           </div>
           <div>
             <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mb-1.5">
-              Platform Performance - Last 7 days
+              Pipeline Stage Distribution
             </div>
             <div className="flex gap-1 h-3 rounded overflow-hidden">
-              <div className="bg-blue-400" style={{ width: '35%' }} title="Twitter" />
-              <div className="bg-red-400" style={{ width: '25%' }} title="YT" />
-              <div className="bg-purple-400" style={{ width: '20%' }} title="IG" />
-              <div className="bg-blue-500" style={{ width: '20%' }} title="FB" />
+              <div className="bg-zinc-300 dark:bg-zinc-700" style={{ width: '25%' }} title="Lead" />
+              <div className="bg-zinc-500" style={{ width: '35%' }} title="Qualified" />
+              <div className="bg-zinc-700 dark:bg-zinc-400" style={{ width: '25%' }} title="Proposal" />
+              <div className="bg-black dark:bg-white" style={{ width: '15%' }} title="Closed" />
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+    product: (
+      <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-lg shadow-black/5 h-full">
+        <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-black dark:text-white">
+            Product
+          </h3>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/research')
+            }}
+            className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+          >
+            View details
+          </button>
+        </div>
+        <div className="p-4">
+          <div className="space-y-3 mb-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-600 dark:text-zinc-400">Feedback Items</span>
+              <span className="text-base font-semibold text-black dark:text-white">24</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-600 dark:text-zinc-400">Active Tests</span>
+              <span className="text-base font-semibold text-black dark:text-white">2</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-600 dark:text-zinc-400">Interviews Scheduled</span>
+              <span className="text-base font-semibold text-black dark:text-white">3</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mb-1.5">
+              NPS Score
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-full bg-black dark:bg-white rounded-full" style={{ width: '72%' }} />
+              </div>
+              <span className="text-xs font-semibold text-black dark:text-white">42</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+    compliance: (
+      <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-lg shadow-black/5 h-full">
+        <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-black dark:text-white">
+            Compliance
+          </h3>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/legal')
+            }}
+            className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+          >
+            View details
+          </button>
+        </div>
+        <div className="p-4">
+          <div className="space-y-3 mb-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-600 dark:text-zinc-400">Entity Status</span>
+              <span className="text-xs font-medium px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">Virginia LLC</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-600 dark:text-zinc-400">Filings Due</span>
+              <span className="text-base font-semibold text-black dark:text-white">2</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-zinc-600 dark:text-zinc-400">Documents</span>
+              <span className="text-base font-semibold text-black dark:text-white">8</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mb-1.5">
+              Compliance Health
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-2 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-full bg-black dark:bg-white rounded-full" style={{ width: '85%' }} />
+              </div>
+              <span className="text-xs font-semibold text-black dark:text-white">85%</span>
             </div>
           </div>
         </div>

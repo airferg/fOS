@@ -1,9 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import AppLayout from '@/components/AppLayout'
 import { PageBackground } from '@/components/PageBackground'
+
+// Contact type from Network
+interface Contact {
+  id: string
+  name: string
+  email?: string
+  company?: string
+  title?: string
+  relationship?: string
+}
+
+// Execution step type
+interface ExecutionStep {
+  id: string
+  message: string
+  status: 'pending' | 'running' | 'complete'
+}
 
 // Types
 interface Product {
@@ -232,6 +249,455 @@ function ConfidenceBar({ confidence }: { confidence: number }) {
   )
 }
 
+// Schedule Interview Modal with Integration Workflow
+function ScheduleInterviewModal({ 
+  onClose, 
+  onSave,
+  productId 
+}: { 
+  onClose: () => void
+  onSave: (interview: Partial<Interview>) => void
+  productId: string
+}) {
+  const [step, setStep] = useState<'select-contact' | 'configure' | 'executing' | 'complete'>('select-contact')
+  const [contacts, setContacts] = useState<Contact[]>([])
+  const [loadingContacts, setLoadingContacts] = useState(true)
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [formData, setFormData] = useState({
+    date: '',
+    time: '10:00',
+    duration: '30',
+    topic: 'Product Discovery Interview',
+    notes: ''
+  })
+  const [executionSteps, setExecutionSteps] = useState<ExecutionStep[]>([])
+  const [zoomLink, setZoomLink] = useState('')
+  
+  // Load contacts from Network
+  useEffect(() => {
+    loadContacts()
+  }, [])
+  
+  const loadContacts = async () => {
+    try {
+      const res = await fetch('/api/contacts')
+      const data = await res.json()
+      setContacts(data.contacts || [])
+    } catch (error) {
+      console.error('Error loading contacts:', error)
+      // Use mock contacts as fallback
+      setContacts([
+        { id: 'c1', name: 'Sarah Chen', email: 'sarah@acme.com', company: 'Acme Corp', title: 'VP Operations', relationship: 'Lead' },
+        { id: 'c2', name: 'Marcus Rivera', email: 'marcus@techstart.io', company: 'TechStart', title: 'Founder', relationship: 'Customer' },
+        { id: 'c3', name: 'Emily Watson', email: 'emily@globalco.com', company: 'GlobalCo', title: 'Product Manager', relationship: 'Prospect' },
+        { id: 'c4', name: 'James Park', email: 'james@startup.co', company: 'Startup Co', title: 'CEO', relationship: 'Lead' },
+        { id: 'c5', name: 'Lisa Thompson', email: 'lisa@enterprise.com', company: 'Enterprise Inc', title: 'Director', relationship: 'Customer' },
+      ])
+    } finally {
+      setLoadingContacts(false)
+    }
+  }
+  
+  const filteredContacts = contacts.filter(c => 
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.company?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+  
+  const executeScheduling = async () => {
+    setStep('executing')
+    
+    const steps = [
+      { id: '1', message: 'Connecting to Zoom...', status: 'pending' as const },
+      { id: '2', message: 'Creating meeting room...', status: 'pending' as const },
+      { id: '3', message: 'Generating calendar invite...', status: 'pending' as const },
+      { id: '4', message: 'Connecting to Gmail...', status: 'pending' as const },
+      { id: '5', message: `Sending invite to ${selectedContact?.email}...`, status: 'pending' as const },
+      { id: '6', message: 'Adding to your calendar...', status: 'pending' as const },
+    ]
+    
+    setExecutionSteps(steps)
+    
+    // Simulate execution
+    for (let i = 0; i < steps.length; i++) {
+      setExecutionSteps(prev => prev.map((s, idx) => 
+        idx === i ? { ...s, status: 'running' } : s
+      ))
+      await new Promise(r => setTimeout(r, 600 + Math.random() * 400))
+      
+      // Generate Zoom link after step 2
+      if (i === 1) {
+        setZoomLink('https://zoom.us/j/123456789?pwd=abc123')
+      }
+      
+      setExecutionSteps(prev => prev.map((s, idx) => 
+        idx === i ? { ...s, status: 'complete' } : s
+      ))
+    }
+    
+    await new Promise(r => setTimeout(r, 500))
+    setStep('complete')
+  }
+  
+  const handleComplete = () => {
+    if (selectedContact) {
+      onSave({
+        id: `int-${Date.now()}`,
+        name: selectedContact.name,
+        role: selectedContact.title || 'Contact',
+        status: 'scheduled',
+        date: formData.date,
+        time: formData.time,
+        notes: formData.notes,
+        tags: ['scheduled-via-hydra']
+      })
+    }
+    onClose()
+  }
+  
+  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full max-w-lg shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-zinc-900 dark:bg-white flex items-center justify-center">
+              <svg className="w-4 h-4 text-white dark:text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-black dark:text-white">Schedule Interview</h2>
+              <p className="text-xs text-zinc-500">via Zoom + Gmail</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded">
+            <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Step 1: Select Contact */}
+        {step === 'select-contact' && (
+          <div className="p-4">
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">Select a contact from your network</label>
+              <div className="relative">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search contacts..."
+                  className="w-full pl-10 pr-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                />
+              </div>
+            </div>
+            
+            <div className="max-h-64 overflow-y-auto space-y-1">
+              {loadingContacts ? (
+                <div className="text-center py-8 text-sm text-zinc-500">Loading contacts...</div>
+              ) : filteredContacts.length === 0 ? (
+                <div className="text-center py-8 text-sm text-zinc-500">No contacts found</div>
+              ) : (
+                filteredContacts.map((contact) => (
+                  <button
+                    key={contact.id}
+                    onClick={() => setSelectedContact(contact)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${
+                      selectedContact?.id === contact.id
+                        ? 'bg-zinc-900 dark:bg-white text-white dark:text-black'
+                        : 'hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${
+                      selectedContact?.id === contact.id
+                        ? 'bg-white dark:bg-zinc-900 text-black dark:text-white'
+                        : 'bg-zinc-800 text-white'
+                    }`}>
+                      {getInitials(contact.name)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium truncate ${
+                        selectedContact?.id === contact.id ? '' : 'text-black dark:text-white'
+                      }`}>{contact.name}</p>
+                      <p className={`text-xs truncate ${
+                        selectedContact?.id === contact.id ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-500'
+                      }`}>
+                        {contact.title && `${contact.title} · `}{contact.company}
+                      </p>
+                    </div>
+                    {contact.email && (
+                      <span className={`text-xs ${
+                        selectedContact?.id === contact.id ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-400'
+                      }`}>
+                        {contact.email.split('@')[0]}@...
+                      </span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
+              <button
+                onClick={() => selectedContact && setStep('configure')}
+                disabled={!selectedContact}
+                className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-sm font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Configure Meeting */}
+        {step === 'configure' && selectedContact && (
+          <div className="p-4">
+            {/* Selected Contact */}
+            <div className="flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg mb-4">
+              <div className="w-10 h-10 rounded-full bg-zinc-800 text-white flex items-center justify-center text-sm font-medium">
+                {getInitials(selectedContact.name)}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-black dark:text-white">{selectedContact.name}</p>
+                <p className="text-xs text-zinc-500">{selectedContact.email}</p>
+              </div>
+              <button
+                onClick={() => setStep('select-contact')}
+                className="text-xs text-zinc-500 hover:text-black dark:hover:text-white transition-colors"
+              >
+                Change
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Date</label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Time</label>
+                  <select
+                    value={formData.time}
+                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                  >
+                    {['9:00', '9:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'].map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Duration</label>
+                <select
+                  value={formData.duration}
+                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                >
+                  <option value="15">15 minutes</option>
+                  <option value="30">30 minutes</option>
+                  <option value="45">45 minutes</option>
+                  <option value="60">60 minutes</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Topic</label>
+                <input
+                  type="text"
+                  value={formData.topic}
+                  onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Notes (optional)</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="What do you want to learn from this interview?"
+                  rows={2}
+                  className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white resize-none"
+                />
+              </div>
+            </div>
+            
+            {/* Integration Preview */}
+            <div className="mt-4 p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg">
+              <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-2">This will:</p>
+              <ul className="space-y-1.5 text-xs text-zinc-500">
+                <li className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4.5 3A1.5 1.5 0 003 4.5v15A1.5 1.5 0 004.5 21h15a1.5 1.5 0 001.5-1.5V7.621a1.5 1.5 0 00-.44-1.06l-3.12-3.12A1.5 1.5 0 0016.379 3H4.5z"/>
+                  </svg>
+                  Create Zoom meeting room
+                </li>
+                <li className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-red-500" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 010 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z"/>
+                  </svg>
+                  Send invite via Gmail to {selectedContact.email}
+                </li>
+                <li className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Add event to your calendar
+                </li>
+              </ul>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-between">
+              <button
+                onClick={() => setStep('select-contact')}
+                className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+              >
+                Back
+              </button>
+              <button
+                onClick={executeScheduling}
+                disabled={!formData.date}
+                className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-sm font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Schedule Interview
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Executing */}
+        {step === 'executing' && (
+          <div className="p-6">
+            <div className="space-y-3">
+              {executionSteps.map((step) => (
+                <div key={step.id} className="flex items-center gap-3">
+                  {step.status === 'pending' && (
+                    <div className="w-5 h-5 rounded-full border-2 border-zinc-300 dark:border-zinc-600" />
+                  )}
+                  {step.status === 'running' && (
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="w-5 h-5 rounded-full border-2 border-zinc-900 dark:border-white border-t-transparent"
+                    />
+                  )}
+                  {step.status === 'complete' && (
+                    <div className="w-5 h-5 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white dark:text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                  <span className={`text-sm ${
+                    step.status === 'complete' ? 'text-zinc-500' :
+                    step.status === 'running' ? 'text-black dark:text-white' : 'text-zinc-400'
+                  }`}>
+                    {step.message}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Complete */}
+        {step === 'complete' && selectedContact && (
+          <div className="p-6">
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center mx-auto mb-3">
+                <svg className="w-6 h-6 text-white dark:text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-black dark:text-white mb-1">Interview Scheduled</h3>
+              <p className="text-sm text-zinc-500">Invite sent to {selectedContact.email}</p>
+            </div>
+            
+            <div className="bg-zinc-50 dark:bg-zinc-900 rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-zinc-800 text-white flex items-center justify-center text-sm font-medium">
+                  {getInitials(selectedContact.name)}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-black dark:text-white">{selectedContact.name}</p>
+                  <p className="text-xs text-zinc-500">{formData.topic}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <span className="text-zinc-500">Date</span>
+                  <p className="text-black dark:text-white font-medium">{formData.date}</p>
+                </div>
+                <div>
+                  <span className="text-zinc-500">Time</span>
+                  <p className="text-black dark:text-white font-medium">{formData.time} ({formData.duration} min)</p>
+                </div>
+              </div>
+              {zoomLink && (
+                <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+                  <span className="text-xs text-zinc-500">Zoom Link</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="text"
+                      value={zoomLink}
+                      readOnly
+                      className="flex-1 px-2 py-1 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-700 rounded text-xs text-zinc-600 dark:text-zinc-400"
+                    />
+                    <button
+                      onClick={() => navigator.clipboard.writeText(zoomLink)}
+                      className="px-2 py-1 text-xs text-zinc-500 hover:text-black dark:hover:text-white transition-colors"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <button
+              onClick={handleComplete}
+              className="w-full px-4 py-2 bg-black dark:bg-white text-white dark:text-black text-sm font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  )
+}
+
 // Add Product Modal
 function AddProductModal({ onClose, onSave }: { onClose: () => void; onSave: (product: Partial<Product>) => void }) {
   const [formData, setFormData] = useState({ name: '', description: '' })
@@ -301,12 +767,28 @@ function AddProductModal({ onClose, onSave }: { onClose: () => void; onSave: (pr
 // Product Workspace Panel
 function ProductWorkspace({ product }: { product: Product }) {
   const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'insights' | 'tests' | 'discovery'>('overview')
+  const [showScheduleModal, setShowScheduleModal] = useState(false)
+  const [interviewsList, setInterviewsList] = useState<Interview[]>(mockInterviews[product.id] || [])
 
   const feedback = mockFeedback[product.id] || []
   const insights = mockInsights[product.id] || []
   const tests = mockTests[product.id] || []
   const metrics = mockMetrics[product.id] || []
-  const interviews = mockInterviews[product.id] || []
+  const interviews = interviewsList
+  
+  const handleAddInterview = (interview: Partial<Interview>) => {
+    const newInterview: Interview = {
+      id: interview.id || `int-${Date.now()}`,
+      name: interview.name || 'Unknown',
+      role: interview.role || 'Contact',
+      status: interview.status || 'scheduled',
+      date: interview.date || new Date().toISOString().split('T')[0],
+      time: interview.time,
+      notes: interview.notes,
+      tags: interview.tags
+    }
+    setInterviewsList([newInterview, ...interviewsList])
+  }
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -586,7 +1068,12 @@ function ProductWorkspace({ product }: { product: Product }) {
                     <button key={f} className="px-2 py-1 text-xs rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700">{f}</button>
                   ))}
                 </div>
-                <button className="px-3 py-1.5 text-xs font-medium bg-black dark:bg-white text-white dark:text-black rounded-lg">+ Schedule Interview</button>
+                <button 
+                  onClick={() => setShowScheduleModal(true)}
+                  className="px-3 py-1.5 text-xs font-medium bg-black dark:bg-white text-white dark:text-black rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
+                >
+                  + Schedule Interview
+                </button>
               </div>
 
               {/* Interview List */}
@@ -708,6 +1195,17 @@ function ProductWorkspace({ product }: { product: Product }) {
           )}
         </AnimatePresence>
       </div>
+      
+      {/* Schedule Interview Modal */}
+      <AnimatePresence>
+        {showScheduleModal && (
+          <ScheduleInterviewModal
+            productId={product.id}
+            onClose={() => setShowScheduleModal(false)}
+            onSave={handleAddInterview}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   )
 }

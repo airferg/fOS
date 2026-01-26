@@ -5,40 +5,57 @@ import { motion, AnimatePresence } from 'framer-motion'
 import AppLayout from '@/components/AppLayout'
 import { PageBackground } from '@/components/PageBackground'
 
-// Types
-interface Document {
-  id: string
-  name: string
-  type: 'safe' | 'ip-assignment' | 'employment' | 'contractor' | 'nda' | 'incorporation' | 'compliance' | 'other'
-  status: 'draft' | 'pending-signature' | 'signed' | 'expired'
-  relatedTo?: string // person or entity name
-  uploadedAt: string
-  signedAt?: string
-}
-
+// Types matching real API data
 interface TeamMember {
   id: string
   name: string
+  email?: string
   role: string
-  email: string
-  ipAssignment: 'signed' | 'pending' | 'none'
-  employmentAgreement: 'signed' | 'pending' | 'none'
+  title?: string
+  equity_percent: number
+  start_date?: string
 }
 
 interface Investor {
   id: string
   name: string
+  email?: string
   firm?: string
-  safeStatus: 'signed' | 'pending' | 'none'
-  safeAmount?: number
+  investment_amount: number
+  equity_percent: number
+  funding_round_id?: string
+  investor_type?: string
+  investment_date?: string
+  is_lead?: boolean
 }
 
-interface Filing {
+interface FundingRound {
+  id: string
+  round_name: string
+  round_type?: string
+  amount_raised: number
+  close_date: string
+  status: 'planned' | 'raising' | 'closed'
+}
+
+interface ComplianceControl {
   id: string
   name: string
-  status: 'completed' | 'due' | 'overdue'
+  description: string
+  status: 'passing' | 'failing' | 'unconfigured' | 'manual'
+  owner?: string
+  linkedSystem?: string
+  frameworks: string[]
+  lastChecked?: string
+}
+
+interface SecurityQuestionnaire {
+  id: string
+  customerName: string
+  status: 'pending' | 'in-progress' | 'completed' | 'sent'
+  questionsTotal: number
+  questionsAnswered: number
   dueDate?: string
-  completedDate?: string
 }
 
 interface ExecutionStep {
@@ -47,49 +64,95 @@ interface ExecutionStep {
   status: 'pending' | 'running' | 'complete'
 }
 
-// Mock Data
-const mockDocuments: Document[] = [
-  { id: 'd1', name: 'Certificate of Incorporation', type: 'incorporation', status: 'signed', uploadedAt: '2024-06-15', signedAt: '2024-06-15' },
-  { id: 'd2', name: 'Bylaws', type: 'incorporation', status: 'signed', uploadedAt: '2024-06-15', signedAt: '2024-06-15' },
-  { id: 'd3', name: 'SAFE Agreement', type: 'safe', status: 'signed', relatedTo: 'Sequoia Scout', uploadedAt: '2024-09-10', signedAt: '2024-09-12' },
-  { id: 'd4', name: 'SAFE Agreement', type: 'safe', status: 'pending-signature', relatedTo: 'Angel Fund', uploadedAt: '2024-11-20' },
-  { id: 'd5', name: 'IP Assignment', type: 'ip-assignment', status: 'signed', relatedTo: 'Alex Chen', uploadedAt: '2024-06-20', signedAt: '2024-06-22' },
-  { id: 'd6', name: 'Privacy Policy', type: 'compliance', status: 'signed', uploadedAt: '2024-06-30' },
-  { id: 'd7', name: 'Terms of Service', type: 'compliance', status: 'signed', uploadedAt: '2024-06-30' },
+interface Filing {
+  id: string
+  name: string
+  description: string
+  status: 'completed' | 'due' | 'overdue' | 'not-required'
+  dueDate?: string
+  completedDate?: string
+  amount?: number
+}
+
+interface EntityInfo {
+  type: string
+  state: string
+  incorporationDate: string
+  registeredAgent: string
+  ein?: string
+  provider: string
+}
+
+// Default entity info (would come from onboarding/settings in real app)
+const defaultEntity: EntityInfo = {
+  type: 'Virginia LLC',
+  state: 'Virginia',
+  incorporationDate: '2025-09-01',
+  registeredAgent: 'Virginia Registered Agent',
+  ein: '88-1234567',
+  provider: 'Virginia SCC'
+}
+
+// Default filings
+const defaultFilings: Filing[] = [
+  { id: 'f1', name: 'Virginia Annual Registration', description: 'Annual registration fee to Virginia SCC', status: 'due', dueDate: '2026-09-01', amount: 50 },
+  { id: 'f2', name: 'Annual Report', description: 'Virginia State Corporation Commission', status: 'due', dueDate: '2026-09-01' },
+  { id: 'f3', name: 'EIN Registration', description: 'Federal employer identification number', status: 'completed', completedDate: '2025-09-15' },
+  { id: 'f4', name: 'Operating Agreement', description: 'LLC operating agreement', status: 'completed', completedDate: '2025-09-01' },
+  { id: 'f5', name: 'Articles of Organization', description: 'Filed with Virginia SCC', status: 'completed', completedDate: '2025-09-01' },
+  { id: 'f6', name: 'Business License', description: 'Local business license if required', status: 'not-required' },
 ]
 
-const mockTeam: TeamMember[] = [
-  { id: 't1', name: 'Alex Chen', role: 'CEO & Co-founder', email: 'alex@company.com', ipAssignment: 'signed', employmentAgreement: 'signed' },
-  { id: 't2', name: 'Sarah Kim', role: 'CTO & Co-founder', email: 'sarah@company.com', ipAssignment: 'pending', employmentAgreement: 'signed' },
-  { id: 't3', name: 'Mike Johnson', role: 'Lead Developer', email: 'mike@company.com', ipAssignment: 'none', employmentAgreement: 'pending' },
+// Static compliance controls (would come from integrations in real app)
+const defaultControls: ComplianceControl[] = [
+  { id: 'c1', name: 'MFA Enforced', description: 'Multi-factor authentication enabled for all users', status: 'unconfigured', linkedSystem: 'Google Workspace', frameworks: ['SOC 2', 'NIST'] },
+  { id: 'c2', name: 'Branch Protection', description: 'Main branch requires PR reviews', status: 'unconfigured', linkedSystem: 'GitHub', frameworks: ['SOC 2'] },
+  { id: 'c3', name: 'Encryption at Rest', description: 'All data encrypted at rest using AES-256', status: 'unconfigured', linkedSystem: 'AWS', frameworks: ['SOC 2', 'NIST', 'HIPAA'] },
+  { id: 'c4', name: 'Access Reviews', description: 'Quarterly access reviews completed', status: 'unconfigured', frameworks: ['SOC 2', 'NIST'] },
+  { id: 'c5', name: 'Incident Response Plan', description: 'Documented incident response procedure', status: 'unconfigured', frameworks: ['SOC 2', 'NIST'] },
+  { id: 'c6', name: 'Vendor Security Review', description: 'Third-party vendors assessed annually', status: 'unconfigured', frameworks: ['SOC 2'] },
+  { id: 'c7', name: 'Security Training', description: 'Annual security awareness training', status: 'unconfigured', frameworks: ['SOC 2', 'NIST', 'HIPAA'] },
+  { id: 'c8', name: 'Backup & Recovery', description: 'Regular backups with tested recovery', status: 'unconfigured', linkedSystem: 'AWS', frameworks: ['SOC 2', 'NIST'] },
 ]
 
-const mockInvestors: Investor[] = [
-  { id: 'i1', name: 'Sequoia Scout', firm: 'Sequoia Capital', safeStatus: 'signed', safeAmount: 150000 },
-  { id: 'i2', name: 'Angel Fund', safeStatus: 'pending', safeAmount: 100000 },
-  { id: 'i3', name: 'John Chen', safeStatus: 'none', safeAmount: 50000 },
-]
-
-const mockFilings: Filing[] = [
-  { id: 'f1', name: 'Delaware Franchise Tax', status: 'due', dueDate: '2026-03-01' },
-  { id: 'f2', name: 'Annual Report', status: 'due', dueDate: '2026-03-01' },
-  { id: 'f3', name: 'Entity Formation', status: 'completed', completedDate: '2024-06-15' },
-  { id: 'f4', name: 'EIN Registration', status: 'completed', completedDate: '2024-06-20' },
+const defaultQuestionnaires: SecurityQuestionnaire[] = [
+  { id: 'q1', customerName: 'Sample Enterprise Customer', status: 'pending', questionsTotal: 85, questionsAnswered: 0, dueDate: '2026-02-15' },
 ]
 
 export default function LegalPage() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments)
-  const [team, setTeam] = useState<TeamMember[]>(mockTeam)
-  const [investors, setInvestors] = useState<Investor[]>(mockInvestors)
-  const [filings, setFilings] = useState<Filing[]>(mockFilings)
+  
+  // Real data from APIs
+  const [team, setTeam] = useState<TeamMember[]>([])
+  const [investors, setInvestors] = useState<Investor[]>([])
+  const [fundingRounds, setFundingRounds] = useState<FundingRound[]>([])
+  const [totalRaised, setTotalRaised] = useState(0)
+  
+  // Agreement tracking (would be stored in DB in real app)
+  const [teamAgreements, setTeamAgreements] = useState<Record<string, { ip: 'signed' | 'pending' | 'none', employment: 'signed' | 'pending' | 'none' }>>({})
+  const [investorSafeStatus, setInvestorSafeStatus] = useState<Record<string, 'signed' | 'pending' | 'draft'>>({})
+  
+  // Compliance data
+  const [controls, setControls] = useState<ComplianceControl[]>(defaultControls)
+  const [questionnaires, setQuestionnaires] = useState<SecurityQuestionnaire[]>(defaultQuestionnaires)
+  
+  // Entity & Filings data
+  const [entity] = useState<EntityInfo>(defaultEntity)
+  const [filings, setFilings] = useState<Filing[]>(defaultFilings)
+  
+  // UI state
+  const [activeTab, setActiveTab] = useState<'compliance' | 'questionnaires' | 'agreements' | 'equity'>('agreements')
+  const [selectedFramework, setSelectedFramework] = useState<string>('all')
+  const [expandedControl, setExpandedControl] = useState<string | null>(null)
   
   // Execution state
   const [executingAction, setExecutingAction] = useState<string | null>(null)
   const [executionSteps, setExecutionSteps] = useState<ExecutionStep[]>([])
-  const [showUploadModal, setShowUploadModal] = useState(false)
-  const [uploadContext, setUploadContext] = useState<{ type: string; relatedTo?: string } | null>(null)
+  
+  // Trust Page state
+  const [trustPageEnabled, setTrustPageEnabled] = useState(false)
+  const [trustPageUrl] = useState('https://trust.yourcompany.com/abc123')
 
   useEffect(() => {
     loadData()
@@ -97,9 +160,73 @@ export default function LegalPage() {
 
   const loadData = async () => {
     try {
+      // Load user profile
       const profileRes = await fetch('/api/profile')
       const profileData = await profileRes.json()
       setUser(profileData)
+
+      // Load team members
+      const teamRes = await fetch('/api/team')
+      const teamData = await teamRes.json()
+      const teamMembers = teamData.teamMembers || []
+      setTeam(teamMembers)
+      
+      // Initialize agreement status for team (would be from DB)
+      const agreements: Record<string, { ip: 'signed' | 'pending' | 'none', employment: 'signed' | 'pending' | 'none' }> = {}
+      teamMembers.forEach((m: TeamMember) => {
+        // Assume founders have signed, others need signing
+        const isFounder = m.role?.toLowerCase().includes('founder') || m.role?.toLowerCase().includes('ceo') || m.role?.toLowerCase().includes('cto')
+        agreements[m.id] = {
+          ip: isFounder ? 'signed' : 'none',
+          employment: isFounder ? 'signed' : 'none'
+        }
+      })
+      setTeamAgreements(agreements)
+
+      // Load funding data first to filter investors
+      const fundingRes = await fetch('/api/funding')
+      const fundingData = await fundingRes.json()
+      const rounds = (fundingData.rounds || []) as FundingRound[]
+      setFundingRounds(rounds)
+      
+      // Get IDs of all valid rounds (closed or raising - committed money)
+      const validRoundIds = new Set(
+        rounds
+          .filter((r: FundingRound) => r.status === 'closed' || r.status === 'raising')
+          .map((r: FundingRound) => r.id)
+      )
+
+      // Load investors and filter to only those from valid rounds
+      const investorsRes = await fetch('/api/investors')
+      const investorsData = await investorsRes.json()
+      const allInvestors = (investorsData.investors || []) as Investor[]
+      
+      // Filter to only investors from valid rounds
+      const validInvestors = allInvestors.filter((inv: Investor) => 
+        inv.funding_round_id && validRoundIds.has(inv.funding_round_id)
+      )
+      
+      // Deduplicate by investor ID (not name) to remove true duplicates but keep multiple investments
+      const investorMap = new Map<string, Investor>()
+      validInvestors.forEach((inv: Investor) => {
+        investorMap.set(inv.id, inv)
+      })
+      const uniqueInvestors = Array.from(investorMap.values())
+      
+      setInvestors(uniqueInvestors)
+      
+      // Calculate total raised from all valid investors' investment amounts
+      const total = uniqueInvestors.reduce((sum: number, inv: Investor) => sum + (Number(inv.investment_amount) || 0), 0)
+      setTotalRaised(total)
+      
+      // Initialize SAFE status for investors (would be from DB)
+      const safeStatus: Record<string, 'signed' | 'pending' | 'draft'> = {}
+      uniqueInvestors.forEach((inv: Investor) => {
+        // Investors from valid rounds have signed SAFEs
+        safeStatus[inv.id] = 'signed'
+      })
+      setInvestorSafeStatus(safeStatus)
+
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -113,114 +240,135 @@ export default function LegalPage() {
     setExecutionSteps(steps.map((s, i) => ({ id: `step-${i}`, message: s.message, status: 'pending' })))
 
     for (let i = 0; i < steps.length; i++) {
-      setExecutionSteps(prev => prev.map((s, idx) => 
-        idx === i ? { ...s, status: 'running' } : s
-      ))
-      await new Promise(r => setTimeout(r, 800 + Math.random() * 400))
-      setExecutionSteps(prev => prev.map((s, idx) => 
-        idx === i ? { ...s, status: 'complete' } : s
-      ))
+      setExecutionSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'running' } : s))
+      await new Promise(r => setTimeout(r, 600 + Math.random() * 400))
+      setExecutionSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'complete' } : s))
     }
 
-    await new Promise(r => setTimeout(r, 500))
+    await new Promise(r => setTimeout(r, 400))
     onComplete()
     setExecutingAction(null)
     setExecutionSteps([])
   }
 
   // Action handlers
-  const handleSendForSignature = (docName: string, recipientName: string, recipientEmail: string) => {
-    executeAction(
-      `sign-${docName}`,
-      [
-        { message: `Preparing ${docName} for signature...` },
-        { message: `Sending to ${recipientName} via DocuSign...` },
-        { message: 'Signature request sent successfully' },
-      ],
-      () => {
-        // Update state to reflect pending signature
-      }
-    )
+  const handleRunAllChecks = () => {
+    executeAction('run-checks', [
+      { message: 'Connecting to integrations...' },
+      { message: 'Checking security configurations...' },
+      { message: 'Updating control statuses...' },
+    ], () => {
+      // Simulate some controls passing after check
+      setControls(prev => prev.map((c, i) => ({
+        ...c,
+        status: i < 3 ? 'passing' : c.status,
+        lastChecked: new Date().toISOString()
+      })))
+    })
   }
 
-  const handleSendReminder = (recipientName: string) => {
-    executeAction(
-      `reminder-${recipientName}`,
-      [
-        { message: `Composing reminder for ${recipientName}...` },
-        { message: 'Sending reminder email...' },
-        { message: 'Reminder sent' },
-      ],
-      () => {}
-    )
+  const handleRequestSignature = (type: string, member: TeamMember) => {
+    executeAction(`sign-${type}-${member.id}`, [
+      { message: `Preparing ${type} for ${member.name}...` },
+      { message: 'Generating document...' },
+      { message: `Sending to ${member.email || member.name}...` },
+      { message: 'Signature request sent' },
+    ], () => {
+      setTeamAgreements(prev => ({
+        ...prev,
+        [member.id]: {
+          ...prev[member.id],
+          [type === 'IP Assignment' ? 'ip' : 'employment']: 'pending'
+        }
+      }))
+    })
   }
 
-  const handleShareToSlack = (docName: string, channel: string) => {
-    executeAction(
-      `slack-${docName}`,
-      [
-        { message: `Preparing ${docName}...` },
-        { message: `Posting to #${channel}...` },
-        { message: `Shared to #${channel}` },
-      ],
-      () => {}
-    )
+  const handleSendSafe = (investor: Investor) => {
+    executeAction(`safe-${investor.id}`, [
+      { message: 'Generating SAFE agreement...' },
+      { message: `Amount: $${investor.investment_amount?.toLocaleString()}...` },
+      { message: 'Creating signature request...' },
+      { message: `Sending to ${investor.name}...` },
+      { message: 'SAFE sent for signature' },
+    ], () => {
+      setInvestorSafeStatus(prev => ({
+        ...prev,
+        [investor.id]: 'pending'
+      }))
+    })
   }
 
-  const handleEmailDocument = (docName: string, recipientName: string) => {
-    executeAction(
-      `email-${docName}`,
-      [
-        { message: `Attaching ${docName}...` },
-        { message: `Sending to ${recipientName}...` },
-        { message: 'Email sent' },
-      ],
-      () => {}
-    )
+  const handleGenerateQuestionnaireResponse = (q: SecurityQuestionnaire) => {
+    executeAction(`questionnaire-${q.id}`, [
+      { message: 'Analyzing questionnaire questions...' },
+      { message: 'Matching to answer bank...' },
+      { message: 'Generating responses...' },
+      { message: 'Response ready for review' },
+    ], () => {
+      setQuestionnaires(prev => prev.map(qst => 
+        qst.id === q.id ? { ...qst, status: 'in-progress', questionsAnswered: Math.floor(qst.questionsTotal * 0.7) } : qst
+      ))
+    })
   }
 
-  const handleFileFranchiseTax = () => {
-    executeAction(
-      'file-franchise-tax',
-      [
-        { message: 'Preparing Delaware Franchise Tax filing...' },
-        { message: 'Calculating tax amount ($225)...' },
-        { message: 'Submitting to Delaware Division of Corporations...' },
-        { message: 'Filing submitted successfully' },
-      ],
-      () => {
-        setFilings(prev => prev.map(f => 
-          f.id === 'f1' ? { ...f, status: 'completed', completedDate: new Date().toISOString().split('T')[0] } : f
-        ))
-      }
-    )
+  const handleCopyTrustPageLink = () => {
+    navigator.clipboard.writeText(trustPageUrl)
   }
 
-  const handleRequestIPAssignment = (member: TeamMember) => {
-    executeAction(
-      `ip-${member.id}`,
-      [
-        { message: `Generating IP Assignment Agreement for ${member.name}...` },
-        { message: `Sending to ${member.email} via DocuSign...` },
-        { message: 'Signature request sent' },
-      ],
-      () => {
-        setTeam(prev => prev.map(t => 
-          t.id === member.id ? { ...t, ipAssignment: 'pending' } : t
-        ))
-      }
-    )
+  const handlePayAnnualRegistration = () => {
+    executeAction('pay-annual-registration', [
+      { message: 'Connecting to Virginia SCC...' },
+      { message: 'Preparing annual registration payment ($50)...' },
+      { message: 'Processing payment...' },
+      { message: 'Submitting to Virginia SCC...' },
+      { message: 'Payment confirmed' },
+    ], () => {
+      setFilings(prev => prev.map(f => 
+        f.id === 'f1' ? { ...f, status: 'completed', completedDate: new Date().toISOString().split('T')[0] } : f
+      ))
+    })
+  }
+
+  const handleFileAnnualReport = () => {
+    executeAction('file-annual-report', [
+      { message: 'Connecting to Virginia SCC...' },
+      { message: 'Generating annual report from company data...' },
+      { message: 'Submitting filing...' },
+      { message: 'Filing confirmed' },
+    ], () => {
+      setFilings(prev => prev.map(f => 
+        f.id === 'f2' ? { ...f, status: 'completed', completedDate: new Date().toISOString().split('T')[0] } : f
+      ))
+    })
+  }
+
+  const handleFile83b = (memberName: string) => {
+    executeAction('file-83b', [
+      { message: `Generating 83(b) election for ${memberName}...` },
+      { message: 'Preparing IRS Form...' },
+      { message: 'Attaching stock grant details...' },
+      { message: 'Creating certified mail label...' },
+      { message: 'Document ready for signature and mailing' },
+    ], () => {
+      // Would open document preview
+    })
   }
 
   // Stats
-  const pendingSignatures = documents.filter(d => d.status === 'pending-signature').length + 
-    team.filter(t => t.ipAssignment === 'pending' || t.employmentAgreement === 'pending').length +
-    investors.filter(i => i.safeStatus === 'pending').length
-  const missingAgreements = team.filter(t => t.ipAssignment === 'none').length
-  const upcomingFilings = filings.filter(f => f.status === 'due' || f.status === 'overdue').length
+  const controlsPassing = controls.filter(c => c.status === 'passing').length
+  const controlsFailing = controls.filter(c => c.status === 'failing').length
+  const controlsUnconfigured = controls.filter(c => c.status === 'unconfigured' || c.status === 'manual').length
+  const complianceScore = controls.length > 0 ? Math.round((controlsPassing / controls.length) * 100) : 0
+  
+  const filteredControls = selectedFramework === 'all' 
+    ? controls 
+    : controls.filter(c => c.frameworks.includes(selectedFramework))
 
-  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase()
+  const pendingTeamAgreements = Object.values(teamAgreements).filter(a => a.ip === 'none' || a.ip === 'pending' || a.employment === 'none' || a.employment === 'pending').length
+  const pendingInvestorDocs = Object.values(investorSafeStatus).filter(s => s === 'pending' || s === 'draft').length
 
+  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   const getDaysUntil = (dateStr: string) => {
     const date = new Date(dateStr)
     const today = new Date()
@@ -235,418 +383,719 @@ export default function LegalPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+            className="mb-4 sm:mb-6"
           >
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold text-black dark:text-white mb-1">Legal & Compliance</h1>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                Manage agreements, signatures, and filings
-              </p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold text-black dark:text-white mb-1">Legal & Compliance</h1>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                  Prove security, manage agreements, stay audit-ready
+                </p>
+              </div>
+              <div className="px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
+                {complianceScore}% Controls Passing
+              </div>
             </div>
-            <button
-              onClick={() => {
-                setUploadContext({ type: 'other' })
-                setShowUploadModal(true)
-              }}
-              className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-lg text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors flex items-center gap-1.5"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Upload Document
-            </button>
           </motion.div>
 
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              whileHover={{ scale: 1.02 }}
+              className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 group cursor-pointer"
+            >
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 mb-1 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">Team Members</div>
+              <div className="text-2xl font-semibold text-black dark:text-white">{team.length}</div>
+              <div className="text-xs text-zinc-500 mt-1">{pendingTeamAgreements > 0 ? `${pendingTeamAgreements} need agreements` : 'All signed'}</div>
+            </motion.div>
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4"
+              whileHover={{ scale: 1.02 }}
+              className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 group cursor-pointer"
             >
-              <div className="text-xs text-zinc-600 dark:text-zinc-400 mb-1.5">Pending Signatures</div>
-              <div className="text-3xl font-medium text-black dark:text-white">{pendingSignatures}</div>
-              {pendingSignatures > 0 && (
-                <div className="text-xs text-zinc-500 mt-1.5">Awaiting response</div>
-              )}
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 mb-1 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">Investors</div>
+              <div className="text-2xl font-semibold text-black dark:text-white">{investors.length}</div>
+              <div className="text-xs text-zinc-500 mt-1">${totalRaised >= 1000 ? (totalRaised / 1000).toFixed(1) + 'K' : totalRaised.toLocaleString()} raised</div>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className={`bg-white dark:bg-zinc-950 rounded-lg border p-4 ${
-                missingAgreements > 0 ? 'border-red-200 dark:border-red-800' : 'border-zinc-200 dark:border-zinc-800'
-              }`}
+              whileHover={{ scale: 1.02 }}
+              className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 group cursor-pointer"
             >
-              <div className="text-xs text-zinc-600 dark:text-zinc-400 mb-1.5">Missing Agreements</div>
-              <div className={`text-3xl font-medium ${missingAgreements > 0 ? 'text-red-600 dark:text-red-400' : 'text-black dark:text-white'}`}>
-                {missingAgreements}
-              </div>
-              {missingAgreements > 0 && (
-                <div className="text-xs text-red-600 dark:text-red-400 mt-1.5">Team members without IP assignment</div>
-              )}
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 mb-1 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">Controls Passing</div>
+              <div className="text-2xl font-semibold text-black dark:text-white">{controlsPassing}/{controls.length}</div>
+              <div className="text-xs text-zinc-500 mt-1">{controlsUnconfigured} unconfigured</div>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className={`bg-white dark:bg-zinc-950 rounded-lg border p-4 ${
-                upcomingFilings > 0 ? 'border-yellow-200 dark:border-yellow-800' : 'border-zinc-200 dark:border-zinc-800'
-              }`}
+              whileHover={{ scale: 1.02 }}
+              className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 group cursor-pointer"
             >
-              <div className="text-xs text-zinc-600 dark:text-zinc-400 mb-1.5">Upcoming Filings</div>
-              <div className={`text-3xl font-medium ${upcomingFilings > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-black dark:text-white'}`}>
-                {upcomingFilings}
-              </div>
-              {upcomingFilings > 0 && (
-                <div className="text-xs text-yellow-600 dark:text-yellow-400 mt-1.5">Due this quarter</div>
-              )}
+              <div className="text-xs text-zinc-600 dark:text-zinc-400 mb-1 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">Filings Due</div>
+              <div className="text-2xl font-semibold text-black dark:text-white">{filings.filter(f => f.status === 'due' || f.status === 'overdue').length}</div>
+              <div className="text-xs text-zinc-500 mt-1">{filings.filter(f => f.status === 'completed').length} completed</div>
             </motion.div>
           </div>
 
-          {/* Main Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Left Column */}
-            <div className="space-y-4">
-              {/* Team Agreements */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-                className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800"
+          {/* Tab Navigation */}
+          <div className="flex items-center gap-1 mb-4 border-b border-zinc-200 dark:border-zinc-800 overflow-x-auto">
+            {[
+              { id: 'agreements', label: 'Team & Investors' },
+              { id: 'equity', label: 'Cap Table' },
+              { id: 'compliance', label: 'Compliance Controls' },
+              { id: 'questionnaires', label: 'Questionnaires' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                className={`px-4 py-2 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'border-black dark:border-white text-black dark:text-white'
+                    : 'border-transparent text-zinc-500 hover:text-black dark:hover:text-white'
+                }`}
               >
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-                  <h3 className="text-sm font-semibold text-black dark:text-white">Team Agreements</h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">IP assignments and employment contracts</p>
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab Content */}
+          <AnimatePresence mode="wait">
+            {/* Team & Investors Tab */}
+            {activeTab === 'agreements' && (
+              <motion.div
+                key="agreements"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-4"
+              >
+                {/* Entity Status - Stripe Atlas Card */}
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-zinc-900 dark:bg-white flex items-center justify-center">
+                        <svg className="w-4 h-4 text-white dark:text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-semibold text-black dark:text-white">{entity.type}</h3>
+                        <p className="text-xs text-zinc-500">Registered with {entity.provider}</p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-1 text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded">
+                      Active
+                    </span>
+                  </div>
+                  <div className="p-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div>
+                        <div className="text-xs text-zinc-500 mb-1">State</div>
+                        <div className="text-sm font-medium text-black dark:text-white">{entity.state}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-zinc-500 mb-1">Incorporated</div>
+                        <div className="text-sm font-medium text-black dark:text-white">
+                          {new Date(entity.incorporationDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-zinc-500 mb-1">EIN</div>
+                        <div className="text-sm font-medium text-black dark:text-white">{entity.ein || 'Pending'}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-zinc-500 mb-1">Registered Agent</div>
+                        <div className="text-sm font-medium text-black dark:text-white truncate">{entity.registeredAgent}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                  {team.map((member) => (
-                    <div key={member.id} className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-white text-sm font-medium">
-                            {getInitials(member.name)}
+
+                {/* Filings & Deadlines */}
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                    <h3 className="text-sm font-semibold text-black dark:text-white">Filings & Compliance</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">State and federal requirements</p>
+                  </div>
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {filings.map((filing) => {
+                      const daysUntil = filing.dueDate ? getDaysUntil(filing.dueDate) : null
+                      const isUrgent = daysUntil !== null && daysUntil <= 45
+                      
+                      return (
+                        <div key={filing.id} className="p-4 flex items-center justify-between group hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 border-2 ${
+                              filing.status === 'completed' 
+                                ? 'bg-zinc-900 dark:bg-white border-zinc-900 dark:border-white' 
+                                : filing.status === 'not-required'
+                                ? 'bg-transparent border-zinc-200 dark:border-zinc-700'
+                                : 'bg-transparent border-zinc-300 dark:border-zinc-600'
+                            }`}>
+                              {filing.status === 'completed' && (
+                                <svg className="w-3 h-3 text-white dark:text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                              {filing.status === 'not-required' && (
+                                <svg className="w-3 h-3 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                                </svg>
+                              )}
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-black dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                                {filing.name}
+                              </p>
+                              <p className="text-xs text-zinc-500">{filing.description}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-black dark:text-white">{member.name}</p>
-                            <p className="text-xs text-zinc-500">{member.role}</p>
+                          <div className="flex items-center gap-3">
+                            {filing.status === 'completed' && (
+                              <span className="text-xs text-zinc-500">
+                                {filing.completedDate && new Date(filing.completedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                            )}
+                            {filing.status === 'due' && (
+                              <>
+                                <span className={`text-xs ${isUrgent ? 'text-zinc-700 dark:text-zinc-300 font-medium' : 'text-zinc-500'}`}>
+                                  Due {filing.dueDate && new Date(filing.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                  {isUrgent && ` (${daysUntil}d)`}
+                                </span>
+                                {filing.id === 'f1' && (
+                                  <button
+                                    onClick={handlePayAnnualRegistration}
+                                    disabled={executingAction !== null}
+                                    className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                                  >
+                                    Pay ${filing.amount}
+                                  </button>
+                                )}
+                                {filing.id === 'f2' && (
+                                  <button
+                                    onClick={handleFileAnnualReport}
+                                    disabled={executingAction !== null}
+                                    className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                                  >
+                                    File Now
+                                  </button>
+                                )}
+                              </>
+                            )}
+                            {filing.status === 'not-required' && (
+                              <span className="text-xs text-zinc-400 italic">Not required</span>
+                            )}
                           </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Team & Investor Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Team Agreements */}
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                    <h3 className="text-sm font-semibold text-black dark:text-white">Team Agreements</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">IP assignments and employment contracts</p>
+                  </div>
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {team.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-zinc-500">No team members yet</div>
+                    ) : (
+                      team.map((member) => {
+                        const agreements = teamAgreements[member.id] || { ip: 'none', employment: 'none' }
+                        return (
+                          <div key={member.id} className="p-4 group hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-white text-sm font-medium group-hover:ring-2 group-hover:ring-orange-500/20 transition-all">
+                                {getInitials(member.name)}
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-black dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{member.name}</p>
+                                <p className="text-xs text-zinc-500">{member.role || member.title}</p>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2 ml-13">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-zinc-600 dark:text-zinc-400">IP Assignment</span>
+                                {agreements.ip === 'signed' ? (
+                                  <span className="text-xs text-zinc-500">Signed</span>
+                                ) : agreements.ip === 'pending' ? (
+                                  <span className="text-xs text-zinc-500 italic">Pending signature</span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleRequestSignature('IP Assignment', member)}
+                                    disabled={executingAction !== null}
+                                    className="text-xs text-black dark:text-white font-medium hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+                                  >
+                                    Request Signature
+                                  </button>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-zinc-600 dark:text-zinc-400">Employment Agreement</span>
+                                {agreements.employment === 'signed' ? (
+                                  <span className="text-xs text-zinc-500">Signed</span>
+                                ) : agreements.employment === 'pending' ? (
+                                  <span className="text-xs text-zinc-500 italic">Pending signature</span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleRequestSignature('Employment Agreement', member)}
+                                    disabled={executingAction !== null}
+                                    className="text-xs text-black dark:text-white font-medium hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+                                  >
+                                    Request Signature
+                                  </button>
+                                )}
+                              </div>
+                              {member.equity_percent > 0 && member.start_date && getDaysUntil(new Date(new Date(member.start_date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()) > 0 && (
+                                <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800 mt-1">
+                                  <span className="text-xs text-zinc-600 dark:text-zinc-400">83(b) Election</span>
+                                  <button
+                                    onClick={() => handleFile83b(member.name)}
+                                    disabled={executingAction !== null}
+                                    className="text-xs text-black dark:text-white font-medium hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+                                  >
+                                    Generate & File
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Investor Documents */}
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                    <h3 className="text-sm font-semibold text-black dark:text-white">Investor Documents</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5">SAFEs and investment agreements</p>
+                  </div>
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {investors.length === 0 ? (
+                      <div className="p-8 text-center text-sm text-zinc-500">No investors yet</div>
+                    ) : (
+                      investors.map((investor) => {
+                        const safeStatus = investorSafeStatus[investor.id] || 'signed'
+                        return (
+                          <div key={investor.id} className="p-4 group hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-white text-sm font-medium group-hover:ring-2 group-hover:ring-orange-500/20 transition-all">
+                                  {getInitials(investor.name)}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-black dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{investor.name}</p>
+                                  {investor.firm && <p className="text-xs text-zinc-500">{investor.firm}</p>}
+                                  <p className="text-xs text-zinc-400 mt-0.5">
+                                    ${investor.investment_amount?.toLocaleString() || 0}
+                                    {investor.equity_percent > 0 && ` · ${investor.equity_percent}% equity`}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {safeStatus === 'signed' && (
+                                  <span className="px-2 py-1 text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded">
+                                    SAFE Signed
+                                  </span>
+                                )}
+                                {safeStatus === 'pending' && (
+                                  <span className="px-2 py-1 text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded italic">
+                                    Awaiting Signature
+                                  </span>
+                                )}
+                                {safeStatus === 'draft' && (
+                                  <button
+                                    onClick={() => handleSendSafe(investor)}
+                                    disabled={executingAction !== null}
+                                    className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                                  >
+                                    Send SAFE
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })
+                    )}
+                  </div>
+                </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Cap Table Tab */}
+            {activeTab === 'equity' && (
+              <motion.div
+                key="equity"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+              >
+                {/* Cap Table */}
+                <div className="lg:col-span-2 bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                    <h3 className="text-sm font-semibold text-black dark:text-white">Ownership</h3>
+                  </div>
+                  <div className="p-4">
+                    {/* Founders & Team */}
+                    <div className="mb-6">
+                      <p className="text-xs font-medium text-zinc-500 mb-3 uppercase tracking-wide">Founders & Team</p>
+                      <div className="space-y-2">
+                        {team.map((member) => (
+                          <div key={member.id} className="flex items-center justify-between py-2 group">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-white text-xs font-medium">
+                                {getInitials(member.name)}
+                              </div>
+                              <div>
+                                <p className="text-sm text-black dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{member.name}</p>
+                                <p className="text-xs text-zinc-500">{member.role || member.title}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-black dark:text-white">{(member.equity_percent || 0).toFixed(2)}%</p>
+                            </div>
+                          </div>
+                        ))}
+                        {team.length === 0 && (
+                          <p className="text-sm text-zinc-500 text-center py-4">No team members</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Investors */}
+                    <div>
+                      <p className="text-xs font-medium text-zinc-500 mb-3 uppercase tracking-wide">Investors</p>
+                      <div className="space-y-2">
+                        {investors.map((investor) => (
+                          <div key={investor.id} className="flex items-center justify-between py-2 group">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-white text-xs font-medium">
+                                {getInitials(investor.name)}
+                              </div>
+                              <div>
+                                <p className="text-sm text-black dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{investor.name}</p>
+                                {investor.firm && <p className="text-xs text-zinc-500">{investor.firm}</p>}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-black dark:text-white">{(investor.equity_percent || 0).toFixed(2)}%</p>
+                              <p className="text-xs text-zinc-500">${investor.investment_amount?.toLocaleString() || 0}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {investors.length === 0 && (
+                          <p className="text-sm text-zinc-500 text-center py-4">No investors</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary Sidebar */}
+                <div className="space-y-4">
+                  <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
+                    <h3 className="text-sm font-semibold text-black dark:text-white mb-4">Summary</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <div className="text-xs text-zinc-500 mb-1">Total Raised</div>
+                        <div className="text-xl font-semibold text-black dark:text-white">${totalRaised >= 1000 ? (totalRaised / 1000).toFixed(1) + 'K' : totalRaised.toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-zinc-500 mb-1">Funding Rounds</div>
+                        <div className="text-xl font-semibold text-black dark:text-white">{fundingRounds.length}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-zinc-500 mb-1">Total Shareholders</div>
+                        <div className="text-xl font-semibold text-black dark:text-white">{team.length + investors.length}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
+                    <h3 className="text-sm font-semibold text-black dark:text-white mb-3">Ownership Breakdown</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-500">Team</span>
+                        <span className="text-black dark:text-white font-medium">
+                          {team.reduce((sum, m) => sum + (m.equity_percent || 0), 0).toFixed(1)}%
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-500">Investors</span>
+                        <span className="text-black dark:text-white font-medium">
+                          {investors.reduce((sum, i) => sum + (i.equity_percent || 0), 0).toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Compliance Controls Tab */}
+            {activeTab === 'compliance' && (
+              <motion.div
+                key="compliance"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+              >
+                {/* Controls List */}
+                <div className="lg:col-span-2">
+                  <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-sm font-semibold text-black dark:text-white">Control Checklist</h3>
+                        <select
+                          value={selectedFramework}
+                          onChange={(e) => setSelectedFramework(e.target.value)}
+                          className="text-xs border border-zinc-200 dark:border-zinc-700 rounded px-2 py-1 bg-white dark:bg-zinc-900 text-black dark:text-white"
+                        >
+                          <option value="all">All Frameworks</option>
+                          <option value="SOC 2">SOC 2</option>
+                          <option value="NIST">NIST CSF</option>
+                          <option value="HIPAA">HIPAA</option>
+                        </select>
+                      </div>
+                      <button
+                        onClick={handleRunAllChecks}
+                        disabled={executingAction !== null}
+                        className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                      >
+                        Run All Checks
+                      </button>
+                    </div>
+                    <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                      {filteredControls.map((control) => (
+                        <div key={control.id} className="p-4 group hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border-2 ${
+                                control.status === 'passing' 
+                                  ? 'bg-zinc-900 dark:bg-white border-zinc-900 dark:border-white' 
+                                  : 'bg-transparent border-zinc-300 dark:border-zinc-600'
+                              }`}>
+                                {control.status === 'passing' && (
+                                  <svg className="w-3 h-3 text-white dark:text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="text-sm font-medium text-black dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{control.name}</p>
+                                  {control.linkedSystem && (
+                                    <span className="px-1.5 py-0.5 text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded">
+                                      {control.linkedSystem}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-zinc-500 mb-2">{control.description}</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {control.frameworks.map(f => (
+                                    <span key={f} className="px-1.5 py-0.5 text-xs bg-zinc-100 dark:bg-zinc-800 text-zinc-500 rounded">
+                                      {f}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            <span className={`text-xs ${
+                              control.status === 'passing' ? 'text-zinc-600 dark:text-zinc-400' :
+                              control.status === 'failing' ? 'text-zinc-500 font-medium' :
+                              'text-zinc-400 italic'
+                            }`}>
+                              {control.status === 'passing' ? 'Passing' : 
+                               control.status === 'failing' ? 'Needs attention' : 
+                               'Not configured'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sidebar */}
+                <div className="space-y-4">
+                  {/* Audit Readiness */}
+                  <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                      <h3 className="text-sm font-semibold text-black dark:text-white">Audit Readiness</h3>
+                    </div>
+                    <div className="p-4">
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                          <span className="text-zinc-500">Overall Progress</span>
+                          <span className="font-medium text-black dark:text-white">{complianceScore}%</span>
+                        </div>
+                        <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-zinc-900 dark:bg-white transition-all"
+                            style={{ width: `${complianceScore}%` }}
+                          />
                         </div>
                       </div>
                       
-                      <div className="mt-3 ml-13 space-y-2">
-                        {/* IP Assignment Status */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span className="text-xs text-zinc-600 dark:text-zinc-400">IP Assignment</span>
-                          </div>
-                          {member.ipAssignment === 'signed' ? (
-                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">Signed</span>
-                          ) : member.ipAssignment === 'pending' ? (
-                            <button
-                              onClick={() => handleSendReminder(member.name)}
-                              disabled={executingAction !== null}
-                              className="text-xs text-yellow-600 dark:text-yellow-400 hover:underline"
-                            >
-                              Pending - Send Reminder
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleRequestIPAssignment(member)}
-                              disabled={executingAction !== null}
-                              className="text-xs text-zinc-900 dark:text-white font-medium hover:underline"
-                            >
-                              Request Signature
-                            </button>
-                          )}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-zinc-500">Passing</span>
+                          <span className="text-black dark:text-white font-medium">{controlsPassing}</span>
                         </div>
-
-                        {/* Employment Agreement Status */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span className="text-xs text-zinc-600 dark:text-zinc-400">Employment Agreement</span>
-                          </div>
-                          {member.employmentAgreement === 'signed' ? (
-                            <span className="text-xs text-green-600 dark:text-green-400 font-medium">Signed</span>
-                          ) : member.employmentAgreement === 'pending' ? (
-                            <button
-                              onClick={() => handleSendReminder(member.name)}
-                              disabled={executingAction !== null}
-                              className="text-xs text-yellow-600 dark:text-yellow-400 hover:underline"
-                            >
-                              Pending - Send Reminder
-                            </button>
-                          ) : (
-                            <button
-                              disabled={executingAction !== null}
-                              className="text-xs text-zinc-900 dark:text-white font-medium hover:underline"
-                            >
-                              Request Signature
-                            </button>
-                          )}
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-zinc-500">Failing</span>
+                          <span className="text-black dark:text-white font-medium">{controlsFailing}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-zinc-500">Not Configured</span>
+                          <span className="text-black dark:text-white font-medium">{controlsUnconfigured}</span>
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </motion.div>
+                  </div>
 
-              {/* Investor Documents */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800"
-              >
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-                  <h3 className="text-sm font-semibold text-black dark:text-white">Investor Documents</h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">SAFEs, term sheets, and agreements</p>
-                </div>
-                <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                  {investors.map((investor) => (
-                    <div key={investor.id} className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-white text-sm font-medium">
-                            {getInitials(investor.name)}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-black dark:text-white">{investor.name}</p>
-                            {investor.firm && (
-                              <p className="text-xs text-zinc-500">{investor.firm}</p>
-                            )}
-                            {investor.safeAmount && (
-                              <p className="text-xs text-zinc-400 mt-0.5">${investor.safeAmount.toLocaleString()} SAFE</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {investor.safeStatus === 'signed' ? (
-                            <span className="px-2 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded">
-                              Signed
-                            </span>
-                          ) : investor.safeStatus === 'pending' ? (
-                            <div className="flex items-center gap-2">
-                              <span className="px-2 py-1 text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded">
-                                Awaiting Signature
-                              </span>
-                              <button
-                                onClick={() => handleSendReminder(investor.name)}
-                                disabled={executingAction !== null}
-                                className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                              >
-                                Remind
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => handleSendForSignature('SAFE Agreement', investor.name, '')}
-                              disabled={executingAction !== null}
-                              className="px-2 py-1 text-xs font-medium bg-zinc-900 dark:bg-white text-white dark:text-black rounded hover:bg-zinc-800 dark:hover:bg-zinc-100"
-                            >
-                              Send SAFE
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      
-                      {investor.safeStatus === 'signed' && (
-                        <div className="mt-3 flex items-center gap-3">
+                  {/* Trust Page */}
+                  <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                    <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-black dark:text-white">Trust Page</h3>
+                      <button
+                        onClick={() => setTrustPageEnabled(!trustPageEnabled)}
+                        className={`w-8 h-5 rounded-full transition-colors ${
+                          trustPageEnabled ? 'bg-zinc-900 dark:bg-white' : 'bg-zinc-300 dark:bg-zinc-600'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 bg-white dark:bg-zinc-900 rounded-full transition-transform mx-0.5 ${
+                          trustPageEnabled ? 'translate-x-3' : ''
+                        }`} />
+                      </button>
+                    </div>
+                    <div className="p-4">
+                      <p className="text-xs text-zinc-500 mb-3">
+                        Share your compliance status with customers.
+                      </p>
+                      {trustPageEnabled && (
+                        <div className="flex items-center gap-2 p-2 bg-zinc-50 dark:bg-zinc-900 rounded">
+                          <input
+                            type="text"
+                            value={trustPageUrl}
+                            readOnly
+                            className="flex-1 text-xs bg-transparent text-zinc-600 dark:text-zinc-400"
+                          />
                           <button
-                            onClick={() => handleShareToSlack('SAFE Agreement', 'legal')}
-                            disabled={executingAction !== null}
-                            className="text-xs text-zinc-500 hover:text-black dark:hover:text-white flex items-center gap-1"
+                            onClick={handleCopyTrustPageLink}
+                            className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
                           >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                            </svg>
-                            Share to Slack
-                          </button>
-                          <button
-                            onClick={() => handleEmailDocument('SAFE Agreement', investor.name)}
-                            disabled={executingAction !== null}
-                            className="text-xs text-zinc-500 hover:text-black dark:hover:text-white flex items-center gap-1"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            Email Copy
+                            Copy
                           </button>
                         </div>
                       )}
                     </div>
-                  ))}
+                  </div>
                 </div>
               </motion.div>
-            </div>
+            )}
 
-            {/* Right Column */}
-            <div className="space-y-4">
-              {/* Entity & Filings */}
+            {/* Questionnaires Tab */}
+            {activeTab === 'questionnaires' && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                key="questionnaires"
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-                className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800"
+                exit={{ opacity: 0, y: -10 }}
               >
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-                  <h3 className="text-sm font-semibold text-black dark:text-white">Entity & Filings</h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">Corporate filings and registrations</p>
-                </div>
-                <div className="p-4">
-                  {/* Entity Status */}
-                  <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-black dark:text-white">Delaware C-Corp</p>
-                        <p className="text-xs text-zinc-500">Incorporated Jun 2024</p>
-                      </div>
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                  <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-black dark:text-white">Security Questionnaires</h3>
+                      <p className="text-xs text-zinc-500 mt-0.5">Respond to customer security assessments</p>
                     </div>
-                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">Active</span>
+                    <button className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors">
+                      Import Questionnaire
+                    </button>
                   </div>
-
-                  {/* Filings List */}
-                  <div className="space-y-3">
-                    {filings.map((filing) => {
-                      const daysUntil = filing.dueDate ? getDaysUntil(filing.dueDate) : null
-                      const isUrgent = daysUntil !== null && daysUntil <= 30
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {questionnaires.map((q) => {
+                      const progress = Math.round((q.questionsAnswered / q.questionsTotal) * 100)
+                      const daysUntil = q.dueDate ? getDaysUntil(q.dueDate) : null
                       
                       return (
-                        <div
-                          key={filing.id}
-                          className={`flex items-center justify-between p-3 rounded-lg border ${
-                            filing.status === 'completed'
-                              ? 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
-                              : isUrgent
-                              ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                              : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-                          }`}
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-black dark:text-white">{filing.name}</p>
-                            {filing.status === 'completed' ? (
-                              <p className="text-xs text-zinc-500">Completed {filing.completedDate}</p>
-                            ) : (
-                              <p className={`text-xs ${isUrgent ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`}>
-                                Due {filing.dueDate} ({daysUntil} days)
+                        <div key={q.id} className="p-4 group hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <p className="text-sm font-medium text-black dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">{q.customerName}</p>
+                              <p className="text-xs text-zinc-500">
+                                {q.questionsTotal} questions
+                                {daysUntil !== null && ` · Due in ${daysUntil} days`}
                               </p>
+                            </div>
+                            <span className="px-2 py-1 text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded">
+                              {q.status === 'sent' ? 'Sent' : q.status === 'completed' ? 'Complete' : q.status === 'in-progress' ? 'In Progress' : 'Pending'}
+                            </span>
+                          </div>
+                          
+                          <div className="mb-3">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="text-zinc-500">{q.questionsAnswered} of {q.questionsTotal} answered</span>
+                              <span className="text-zinc-500">{progress}%</span>
+                            </div>
+                            <div className="h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                              <div className="h-full bg-zinc-900 dark:bg-white transition-all" style={{ width: `${progress}%` }} />
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            {q.status === 'pending' && (
+                              <button
+                                onClick={() => handleGenerateQuestionnaireResponse(q)}
+                                disabled={executingAction !== null}
+                                className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
+                              >
+                                Generate Responses
+                              </button>
+                            )}
+                            {q.status === 'in-progress' && (
+                              <>
+                                <button className="px-3 py-1.5 border border-zinc-200 dark:border-zinc-700 rounded text-xs font-medium text-black dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+                                  Continue Editing
+                                </button>
+                                <button className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black rounded text-xs font-medium hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors">
+                                  Send to Customer
+                                </button>
+                              </>
                             )}
                           </div>
-                          {filing.status !== 'completed' && filing.id === 'f1' && (
-                            <button
-                              onClick={handleFileFranchiseTax}
-                              disabled={executingAction !== null}
-                              className="px-3 py-1.5 text-xs font-medium bg-zinc-900 dark:bg-white text-white dark:text-black rounded hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-colors"
-                            >
-                              File Now
-                            </button>
-                          )}
-                          {filing.status === 'completed' && (
-                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
                         </div>
                       )
                     })}
                   </div>
                 </div>
               </motion.div>
-
-              {/* Compliance */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800"
-              >
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
-                  <h3 className="text-sm font-semibold text-black dark:text-white">Compliance Documents</h3>
-                  <p className="text-xs text-zinc-500 mt-0.5">Privacy policy, terms, and policies</p>
-                </div>
-                <div className="p-4 space-y-3">
-                  {documents.filter(d => d.type === 'compliance').map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800"
-                    >
-                      <div className="flex items-center gap-3">
-                        <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <div>
-                          <p className="text-sm font-medium text-black dark:text-white">{doc.name}</p>
-                          <p className="text-xs text-zinc-500">Last updated {doc.uploadedAt}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button className="text-xs text-zinc-500 hover:text-black dark:hover:text-white">
-                          View
-                        </button>
-                        <button className="text-xs text-zinc-500 hover:text-black dark:hover:text-white">
-                          Update
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-
-              {/* Recent Documents */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
-                className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800"
-              >
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-black dark:text-white">Document Vault</h3>
-                  <span className="text-xs text-zinc-500">{documents.length} documents</span>
-                </div>
-                <div className="p-4 space-y-2">
-                  {documents.filter(d => d.type !== 'compliance').slice(0, 5).map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center justify-between p-2 hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-lg transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <div>
-                          <p className="text-xs font-medium text-black dark:text-white">{doc.name}</p>
-                          {doc.relatedTo && (
-                            <p className="text-xs text-zinc-500">{doc.relatedTo}</p>
-                          )}
-                        </div>
-                      </div>
-                      <span className={`text-xs ${
-                        doc.status === 'signed' ? 'text-green-600 dark:text-green-400' :
-                        doc.status === 'pending-signature' ? 'text-yellow-600 dark:text-yellow-400' :
-                        'text-zinc-500'
-                      }`}>
-                        {doc.status === 'signed' ? 'Signed' : doc.status === 'pending-signature' ? 'Pending' : doc.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            </div>
-          </div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Execution Overlay */}
@@ -662,10 +1111,10 @@ export default function LegalPage() {
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6 shadow-2xl"
+                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full max-w-md p-6"
               >
-                <div className="space-y-4">
-                  {executionSteps.map((step, idx) => (
+                <div className="space-y-3">
+                  {executionSteps.map((step) => (
                     <div key={step.id} className="flex items-center gap-3">
                       {step.status === 'pending' && (
                         <div className="w-5 h-5 rounded-full border-2 border-zinc-300 dark:border-zinc-600" />
@@ -678,90 +1127,20 @@ export default function LegalPage() {
                         />
                       )}
                       {step.status === 'complete' && (
-                        <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="w-5 h-5 rounded-full bg-zinc-900 dark:bg-white flex items-center justify-center">
+                          <svg className="w-3 h-3 text-white dark:text-zinc-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                           </svg>
                         </div>
                       )}
                       <span className={`text-sm ${
                         step.status === 'complete' ? 'text-zinc-500' :
-                        step.status === 'running' ? 'text-black dark:text-white font-medium' :
-                        'text-zinc-400'
+                        step.status === 'running' ? 'text-black dark:text-white' : 'text-zinc-400'
                       }`}>
                         {step.message}
                       </span>
                     </div>
                   ))}
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Upload Modal */}
-        <AnimatePresence>
-          {showUploadModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-              onClick={() => setShowUploadModal(false)}
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 w-full max-w-md shadow-2xl"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-black dark:text-white">Upload Document</h2>
-                  <button onClick={() => setShowUploadModal(false)} className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded">
-                    <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="p-4 space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Document Type</label>
-                    <select className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white">
-                      <option>SAFE Agreement</option>
-                      <option>IP Assignment</option>
-                      <option>Employment Agreement</option>
-                      <option>NDA</option>
-                      <option>Incorporation Document</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1.5">Related To (Optional)</label>
-                    <input
-                      type="text"
-                      placeholder="Person or company name"
-                      className="w-full px-3 py-2 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm bg-white dark:bg-zinc-900 text-black dark:text-white"
-                    />
-                  </div>
-                  <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-lg p-8 text-center hover:border-zinc-400 dark:hover:border-zinc-500 transition-colors cursor-pointer">
-                    <svg className="w-8 h-8 text-zinc-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400">Drop file here or click to browse</p>
-                    <p className="text-xs text-zinc-400 mt-1">PDF, DOC, DOCX up to 10MB</p>
-                  </div>
-                </div>
-                <div className="px-4 py-3 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-2">
-                  <button
-                    onClick={() => setShowUploadModal(false)}
-                    className="px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg"
-                  >
-                    Cancel
-                  </button>
-                  <button className="px-3 py-1.5 bg-zinc-900 dark:bg-white text-white dark:text-black text-xs font-medium rounded-lg hover:bg-zinc-800 dark:hover:bg-zinc-100">
-                    Upload
-                  </button>
                 </div>
               </motion.div>
             </motion.div>
