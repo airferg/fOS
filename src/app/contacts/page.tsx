@@ -439,7 +439,7 @@ export default function NetworkPage() {
                           className="w-12 h-12 rounded-full object-cover flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-black dark:text-white text-sm font-medium flex-shrink-0">
+                        <div className="w-12 h-12 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
                           {getInitials(contact.name)}
                         </div>
                       )}

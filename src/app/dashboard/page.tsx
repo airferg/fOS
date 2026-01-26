@@ -7,6 +7,8 @@ import AppLayout from '@/components/AppLayout'
 import { PageBackground } from '@/components/PageBackground'
 import ActivityFeed from '@/components/ActivityFeed'
 import SlackMessagePopup from '@/components/SlackMessagePopup'
+import SlackNotificationPopup from '@/components/SlackNotificationPopup'
+import IntegrationLogo from '@/components/IntegrationLogo'
 import {
   DndContext,
   closestCenter,
@@ -37,6 +39,7 @@ interface DashboardStats {
   teamMembers: TeamMember[]
   teamCount: number
   activeTools: number
+  connectedIntegrations: string[]
   totalRaised: number
   fundingStage: string
   marketingReach: number
@@ -72,11 +75,21 @@ function SortableCard({ id, children }: { id: string; children: React.ReactNode 
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      className={`cursor-grab active:cursor-grabbing transition-all ${
+      className={`relative transition-all ${
         isDragging ? 'shadow-[0_0_0_3px_rgba(234,179,8,0.5)] ring-2 ring-yellow-500/50 opacity-80 scale-[1.02]' : ''
       }`}
     >
+      {/* Drag Handle */}
+      <div
+        {...listeners}
+        className="absolute top-2 right-2 z-10 p-1.5 rounded cursor-grab active:cursor-grabbing opacity-40 hover:opacity-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-opacity"
+        title="Drag to reorder"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <svg className="w-4 h-4 text-zinc-400 dark:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+        </svg>
+      </div>
       {children}
     </div>
   )
@@ -90,6 +103,7 @@ export default function DashboardPage() {
     teamMembers: [],
     teamCount: 0,
     activeTools: 0,
+    connectedIntegrations: [],
     totalRaised: 0,
     fundingStage: '',
     marketingReach: 0,
@@ -136,19 +150,32 @@ export default function DashboardPage() {
       const profileData = await profileRes.json()
       setUser(profileData)
 
-      const [contactsRes, teamRes, toolsRes, fundingRes, marketingRes] = await Promise.all([
+      const [contactsRes, teamRes, integrationsRes, fundingRes, marketingRes] = await Promise.all([
         fetch('/api/contacts').catch(() => ({ json: () => ({ contacts: [] }) })),
         fetch('/api/team').catch(() => ({ json: () => ({ teamMembers: [] }) })),
-        fetch('/api/tools').catch(() => ({ json: () => ({ stats: { total: 7 } }) })),
+        fetch('/api/integrations/status').catch(() => ({ json: () => ({ status: {} }) })),
         fetch('/api/funding').catch(() => ({ json: () => ({ stats: { totalRaised: 6500 } }) })),
         fetch('/api/marketing').catch(() => ({ json: () => ({ stats: {} }) }))
       ])
 
       const contactsData = await contactsRes.json()
       const teamData = await teamRes.json()
-      const toolsData = await toolsRes.json()
+      const integrationsData = await integrationsRes.json()
       const fundingData = await fundingRes.json()
       const marketingData = await marketingRes.json()
+
+      // Get connected integrations - only count integrations that are in the tools list
+      const integrationStatus = integrationsData.status || {}
+      // Define the same list of integrations as the tools page uses (from ALL_INTEGRATIONS)
+      const validIntegrationIds = [
+        'gmail', 'google-calendar', 'outlook', 'slack', 'discord', 'zoom', 'calendly',
+        'intercom', 'zendesk', 'notion', 'jira', 'asana', 'tally', 'typeform',
+        'github', 'gitlab', 'vercel', 'stripe', 'quickbooks',
+        'linkedin', 'twitter', 'mailchimp', 'hubspot'
+      ]
+      const connectedIntegrations = validIntegrationIds.filter(
+        id => integrationStatus[id] === true
+      ) || []
 
       // Calculate network trend based on recent activity
       const contacts = contactsData.contacts || []
@@ -172,7 +199,8 @@ export default function DashboardPage() {
         networkTrend,
         teamMembers: teamData.teamMembers?.slice(0, 8) || [],
         teamCount: teamData.teamMembers?.length || 0,
-        activeTools: toolsData.stats?.total || 0,
+        activeTools: connectedIntegrations.length,
+        connectedIntegrations: connectedIntegrations || [],
         totalRaised: fundingData.stats?.totalRaised || 0,
         fundingStage,
         marketingReach: marketingData.stats?.totalReach || 0,
@@ -213,6 +241,15 @@ export default function DashboardPage() {
       <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md rounded-xl p-4 border border-zinc-200/50 dark:border-zinc-800/50 shadow-lg shadow-black/5">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs text-zinc-600 dark:text-zinc-400">Network Connections</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/contacts')
+            }}
+            className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
+          >
+            View all
+          </button>
         </div>
         <div className="text-2xl font-semibold text-black dark:text-white mb-1">
           {stats.networkConnections}
@@ -233,6 +270,15 @@ export default function DashboardPage() {
       <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md rounded-xl p-4 border border-zinc-200/50 dark:border-zinc-800/50 shadow-lg shadow-black/5">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs text-zinc-600 dark:text-zinc-400">Team Members</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/team')
+            }}
+            className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
+          >
+            View all
+          </button>
         </div>
         <div className="text-2xl font-semibold text-black dark:text-white mb-1">
           {stats.teamCount}
@@ -251,7 +297,7 @@ export default function DashboardPage() {
                 ) : (
                   <div
                     key={member.id}
-                    className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 border-2 border-white dark:border-zinc-950 flex items-center justify-center text-white text-xs font-medium"
+                    className="w-8 h-8 rounded-full bg-zinc-800 dark:bg-zinc-800 border-2 border-white dark:border-zinc-950 flex items-center justify-center text-white text-xs font-medium"
                   >
                     {member.name.charAt(0)}
                   </div>
@@ -270,19 +316,79 @@ export default function DashboardPage() {
       <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md rounded-xl p-4 border border-zinc-200/50 dark:border-zinc-800/50 shadow-lg shadow-black/5">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs text-zinc-600 dark:text-zinc-400">Active Tools</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/tools')
+            }}
+            className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
+          >
+            View all
+          </button>
         </div>
         <div className="text-2xl font-semibold text-black dark:text-white mb-1">
           {stats.activeTools}
         </div>
-        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+        <div className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
           {stats.activeTools === 0 ? 'No tools connected' : 'Connected integrations'}
         </div>
+        {stats.connectedIntegrations && stats.connectedIntegrations.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {stats.connectedIntegrations.slice(0, 6).map((integrationId) => {
+              // Map integration IDs to display names
+              const nameMap: Record<string, string> = {
+                'gmail': 'Gmail',
+                'google-calendar': 'Google Calendar',
+                'google-docs': 'Google Docs',
+                'outlook': 'Outlook',
+                'slack': 'Slack',
+                'discord': 'Discord',
+                'zoom': 'Zoom',
+                'calendly': 'Calendly',
+                'notion': 'Notion',
+                'jira': 'Jira',
+                'github': 'GitHub',
+                'stripe': 'Stripe',
+                'intercom': 'Intercom',
+                'zendesk': 'Zendesk',
+                'asana': 'Asana',
+                'tally': 'Tally',
+                'typeform': 'Typeform',
+                'gitlab': 'GitLab',
+                'vercel': 'Vercel',
+                'quickbooks': 'QuickBooks',
+                'linkedin': 'LinkedIn',
+                'twitter': 'Twitter',
+                'mailchimp': 'Mailchimp',
+                'hubspot': 'HubSpot',
+              }
+              const displayName = nameMap[integrationId] || integrationId
+              return (
+                <IntegrationLogo key={integrationId} name={displayName} size="sm" />
+              )
+            })}
+            {stats.connectedIntegrations && stats.connectedIntegrations.length > 6 && (
+              <div className="flex items-center justify-center w-6 h-6 rounded bg-zinc-200 dark:bg-zinc-800 text-xs text-zinc-600 dark:text-zinc-400">
+                +{stats.connectedIntegrations.length - 6}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     ),
     'kpi-funding': (
       <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md rounded-xl p-4 border border-zinc-200/50 dark:border-zinc-800/50 shadow-lg shadow-black/5">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-xs text-zinc-600 dark:text-zinc-400">Total Raised</span>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/funding')
+            }}
+            className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
+          >
+            View details
+          </button>
         </div>
         <div className="text-2xl font-semibold text-black dark:text-white mb-1">
           {stats.totalRaised > 0 ? `$${(stats.totalRaised / 1000).toFixed(1)}K` : '$0'}
@@ -294,10 +400,19 @@ export default function DashboardPage() {
     ),
     activity: (
       <div className="bg-white/60 dark:bg-zinc-950/60 backdrop-blur-md rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-lg shadow-black/5 h-full">
-        <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-black dark:text-white">
             Recent Activity
           </h3>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/workspace')
+            }}
+            className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors"
+          >
+            View all
+          </button>
         </div>
         <div className="p-4 max-h-96 overflow-y-auto">
           <ActivityFeed limit={10} />
@@ -311,7 +426,10 @@ export default function DashboardPage() {
             Marketing Overview
           </h3>
           <button
-            onClick={() => router.push('/marketing')}
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/marketing')
+            }}
             className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
           >
             View details
@@ -359,7 +477,10 @@ export default function DashboardPage() {
             Network Connections
           </h3>
           <button
-            onClick={() => router.push('/contacts')}
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/contacts')
+            }}
             className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
           >
             View all
@@ -398,7 +519,10 @@ export default function DashboardPage() {
             Team Members
           </h3>
           <button
-            onClick={() => router.push('/team')}
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/team')
+            }}
             className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
           >
             View all
@@ -424,7 +548,7 @@ export default function DashboardPage() {
                 ) : (
                   <div
                     key={member.id}
-                    className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 border-2 border-white dark:border-zinc-950 flex items-center justify-center text-white text-xs font-medium"
+                    className="w-8 h-8 rounded-full bg-zinc-800 dark:bg-zinc-800 border-2 border-white dark:border-zinc-950 flex items-center justify-center text-white text-xs font-medium"
                   >
                     {member.name.charAt(0)}
                   </div>
@@ -442,7 +566,10 @@ export default function DashboardPage() {
             Active Tools
           </h3>
           <button
-            onClick={() => router.push('/tools')}
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/tools')
+            }}
             className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
           >
             View all
@@ -465,7 +592,10 @@ export default function DashboardPage() {
             Total Raised
           </h3>
           <button
-            onClick={() => router.push('/funding')}
+            onClick={(e) => {
+              e.stopPropagation()
+              router.push('/funding')
+            }}
             className="text-xs text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
           >
             View details
@@ -610,6 +740,9 @@ export default function DashboardPage() {
             )}
           </div>
           </motion.div>
+
+          {/* Slack Notification Popup */}
+          <SlackNotificationPopup />
 
           {/* All Draggable Cards (including KPIs) */}
           <DndContext

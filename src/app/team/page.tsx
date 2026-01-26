@@ -468,7 +468,7 @@ export default function TeamPage() {
                               className="w-12 h-12 rounded-full object-cover"
                             />
                           ) : (
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm">
+                            <div className="w-12 h-12 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white font-semibold text-sm">
                               {member.name.charAt(0)}
                             </div>
                           )}

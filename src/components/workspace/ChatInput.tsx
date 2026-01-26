@@ -355,7 +355,7 @@ export function ChatInput({ onSend, isLoading, suggestions = [], placeholder = "
                                 onClick={() => handleContactClick(contact)}
                                 className="w-full text-left px-3 py-2 text-sm text-black dark:text-white hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-lg transition-colors flex items-center gap-3"
                               >
-                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                                <div className="w-6 h-6 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                                   {contact.name.charAt(0)}
                                 </div>
                                 <span className="truncate">{contact.name}</span>

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
+import HydraLogo from '@/components/HydraLogo'
 
 export default function DevPage() {
   return (
@@ -9,7 +10,7 @@ export default function DevPage() {
       <nav className="bg-white dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center">
-            <img src="/hydra.png" alt="Hydra" className="h-8 w-auto" />
+            <HydraLogo size="md" showText animate={false} />
           </Link>
           <div className="flex items-center gap-6 text-xs">
             <Link href="/dashboard" className="text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors">

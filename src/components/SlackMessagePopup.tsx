@@ -153,7 +153,7 @@ export default function SlackMessagePopup({ channelId, channelName = 'general', 
                   className="w-8 h-8 rounded-full flex-shrink-0 object-cover"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
                   {getInitials(message.user_name)}
                 </div>
               )}

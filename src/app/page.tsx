@@ -1,12 +1,15 @@
+'use client'
+
 import Link from 'next/link'
+import HydraLogo from '@/components/HydraLogo'
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
       <div className="max-w-3xl mx-auto px-6 text-center">
-        <h1 className="text-5xl font-medium tracking-tight text-black dark:text-white mb-6">
-          Hydra
-        </h1>
+        <div className="flex justify-center mb-6">
+          <HydraLogo size="xl" showText animate />
+        </div>
         <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4 leading-relaxed">
           An AI-powered operating system for startup founders
         </p>

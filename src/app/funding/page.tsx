@@ -403,14 +403,14 @@ export default function FundingPage() {
                   {investors.slice(0, 3).map((investor) => (
                     <div
                       key={investor.id}
-                      className="w-6 h-6 rounded-full bg-zinc-200 dark:bg-zinc-800 group-hover:bg-orange-100 dark:group-hover:bg-orange-900/20 flex items-center justify-center text-black dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 text-xs font-medium border-2 border-white dark:border-zinc-950 -ml-1 first:ml-0 transition-colors"
+                      className="w-6 h-6 rounded-full bg-zinc-800 dark:bg-zinc-800 group-hover:bg-orange-100 dark:group-hover:bg-orange-900/20 flex items-center justify-center text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 text-xs font-medium border-2 border-white dark:border-zinc-950 -ml-1 first:ml-0 transition-colors"
                       title={investor.name}
                     >
                       {getInitials(investor.name)}
                     </div>
                   ))}
                   {investors.length > 3 && (
-                    <div className="w-6 h-6 rounded-full bg-zinc-300 dark:bg-zinc-700 group-hover:bg-orange-100 dark:group-hover:bg-orange-900/20 flex items-center justify-center text-black dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 text-xs font-medium border-2 border-white dark:border-zinc-950 -ml-1 transition-colors">
+                    <div className="w-6 h-6 rounded-full bg-zinc-800 dark:bg-zinc-800 group-hover:bg-orange-100 dark:group-hover:bg-orange-900/20 flex items-center justify-center text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 text-xs font-medium border-2 border-white dark:border-zinc-950 -ml-1 transition-colors">
                       +{investors.length - 3}
                     </div>
                   )}
@@ -610,7 +610,7 @@ export default function FundingPage() {
                           whileHover={{ x: 4 }}
                           className="flex items-center gap-3 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 rounded-lg transition-colors group cursor-pointer"
                         >
-                          <div className="w-10 h-10 rounded-full bg-zinc-200 dark:bg-zinc-800 group-hover:bg-orange-100 dark:group-hover:bg-orange-900/20 flex items-center justify-center text-black dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 text-sm font-medium flex-shrink-0 transition-colors">
+                          <div className="w-10 h-10 rounded-full bg-zinc-800 dark:bg-zinc-800 group-hover:bg-orange-100 dark:group-hover:bg-orange-900/20 flex items-center justify-center text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 text-sm font-medium flex-shrink-0 transition-colors">
                             {getInitials(investor.name)}
                           </div>
                           <div className="flex-1 min-w-0">

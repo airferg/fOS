@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import HydraLogo from '@/components/HydraLogo'
 
 // Import integrations list from integrations page
 const integrations = [
@@ -187,7 +188,10 @@ export default function OnboardingPage() {
         return (
           <div className="space-y-6">
             <div>
-              <h2 className="text-2xl font-medium text-black dark:text-white mb-2">Welcome to Hydra</h2>
+              <div className="mb-4">
+                <HydraLogo size="lg" showText animate />
+              </div>
+              <h2 className="text-2xl font-medium text-black dark:text-white mb-2">Welcome</h2>
               <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Let's get to know you and set up your workspace.</p>
             </div>
             <div>

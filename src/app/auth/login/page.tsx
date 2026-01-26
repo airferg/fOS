@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import HydraLogo from '@/components/HydraLogo'
 
 function LoginContent() {
   const router = useRouter()
@@ -91,9 +92,9 @@ function LoginContent() {
     <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
       <div className="w-full max-w-md px-8">
         <div className="mb-10">
-          <h1 className="text-2xl font-medium tracking-tight text-black dark:text-white mb-2">
-            Hydra
-          </h1>
+          <div className="mb-4">
+            <HydraLogo size="lg" showText animate />
+          </div>
           <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
             Sign in to continue
           </p>

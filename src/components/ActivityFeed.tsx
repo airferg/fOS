@@ -38,12 +38,38 @@ export default function ActivityFeed({ limit = 10 }: { limit?: number }) {
     const date = new Date(dateString)
     const now = new Date()
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+    const diffInHours = Math.floor(diffInSeconds / 3600)
+    const diffInDays = Math.floor(diffInSeconds / 86400)
 
-    if (diffInSeconds < 60) return 'just now'
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`
-    return date.toLocaleDateString()
+    // Format relative time
+    let relativeTime = ''
+    if (diffInSeconds < 60) {
+      relativeTime = 'just now'
+    } else if (diffInSeconds < 3600) {
+      relativeTime = `${Math.floor(diffInSeconds / 60)}m ago`
+    } else if (diffInSeconds < 86400) {
+      relativeTime = `${diffInHours}h ago`
+    } else if (diffInSeconds < 604800) {
+      relativeTime = `${diffInDays}d ago`
+    } else {
+      relativeTime = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    }
+
+    // Format absolute time
+    const absoluteTime = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+
+    // Return combined format like "2 hours ago • Jan 18, 2026 at 7:32 PM"
+    if (diffInSeconds < 604800) {
+      return `${relativeTime} • ${absoluteTime}`
+    }
+    return relativeTime
   }
 
   if (loading) {
@@ -71,61 +97,60 @@ export default function ActivityFeed({ limit = 10 }: { limit?: number }) {
     )
   }
 
+  const getInitials = (name: string | null) => {
+    if (!name) return '?'
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2)
+  }
+
+  const getActivityIcon = (activityType: string) => {
+    const iconMap: Record<string, string> = {
+      'contact_added': '👤',
+      'tool_connected': '🔌',
+      'funding_received': '💰',
+      'team_joined': '👥',
+      'milestone_reached': '🎯',
+      'document_created': '📄',
+      'integration_connected': '🔗',
+      'roadmap_updated': '🗺️',
+    }
+    return iconMap[activityType] || '📌'
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-0">
       {activities.map((activity) => (
         <div
           key={activity.id}
-          className="flex gap-3 pb-4 border-b border-zinc-200 dark:border-zinc-800 last:border-0"
+          className="flex gap-3 py-3 border-b border-zinc-200/50 dark:border-zinc-800/50 last:border-0"
         >
-          {/* Icon/Avatar */}
+          {/* Avatar/Icon */}
           <div className="flex-shrink-0">
             {activity.actor_avatar_url ? (
               <img
                 src={activity.actor_avatar_url}
                 alt={activity.actor_name || 'User'}
-                className="w-10 h-10 rounded-full"
+                className="w-8 h-8 rounded-full object-cover"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-lg">
-                {activity.icon || '📌'}
+              <div className="w-8 h-8 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white text-xs font-medium">
+                {activity.actor_name ? getInitials(activity.actor_name) : getActivityIcon(activity.activity_type)}
               </div>
             )}
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex-1">
-                <p className="text-xs font-medium text-black dark:text-white">
-                  {activity.title}
-                </p>
-                {activity.description && (
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5 leading-relaxed">
-                    {activity.description}
-                  </p>
-                )}
-              </div>
-              <span className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
-                {formatTimeAgo(activity.created_at)}
-              </span>
-            </div>
-
-            {/* Metadata badges */}
-            {activity.metadata && Object.keys(activity.metadata).length > 0 && (
-              <div className="flex gap-2 mt-2">
-                {activity.metadata.role && (
-                  <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">
-                    {activity.metadata.role}
-                  </span>
-                )}
-                {activity.metadata.category && (
-                  <span className="text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">
-                    {activity.metadata.category}
-                  </span>
-                )}
-              </div>
-            )}
+            <p className="text-sm text-black dark:text-white leading-snug">
+              {activity.title}
+            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              {formatTimeAgo(activity.created_at)}
+            </p>
           </div>
         </div>
       ))}

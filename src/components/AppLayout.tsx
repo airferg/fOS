@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation'
 import ThemeToggle from './ThemeToggle'
 import AIChatAssistant from './AIChatAssistant'
 import { Icons, IconName } from './Icons'
+import HydraLogo from './HydraLogo'
 
 interface User {
   name: string
@@ -49,21 +50,8 @@ export default function AppLayout({ children, user }: AppLayoutProps) {
         {/* Logo / Brand */}
         <div className="h-14 flex items-center justify-between px-3 border-b border-zinc-200 dark:border-zinc-800">
           <Link href="/dashboard" className="flex items-center gap-2">
-            {sidebarOpen && <img src="/hydra.png" alt="Hydra" className="h-6 w-auto" />}
+            <HydraLogo size="lg" showText={false} animate={false} />
           </Link>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-            aria-label="Toggle sidebar"
-          >
-            <svg className="w-4 h-4 text-zinc-600 dark:text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {sidebarOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-              )}
-            </svg>
-          </button>
         </div>
 
         {/* Navigation */}
@@ -96,7 +84,7 @@ export default function AppLayout({ children, user }: AppLayoutProps) {
         <div className="border-t border-zinc-200 dark:border-zinc-800 p-3">
           {sidebarOpen ? (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-semibold">
+              <div className="w-8 h-8 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white text-xs font-semibold">
                 {user?.name?.charAt(0) || 'U'}
               </div>
               <div className="flex-1 min-w-0">
@@ -109,7 +97,7 @@ export default function AppLayout({ children, user }: AppLayoutProps) {
               </div>
             </div>
           ) : (
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-semibold mx-auto">
+            <div className="w-8 h-8 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white text-xs font-semibold mx-auto">
               {user?.name?.charAt(0) || 'U'}
             </div>
           )}

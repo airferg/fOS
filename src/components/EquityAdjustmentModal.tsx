@@ -64,7 +64,7 @@ export default function EquityAdjustmentModal({ member, onClose, onSave }: Equit
                 className="w-10 h-10 rounded-full object-cover"
               />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-semibold">
+              <div className="w-10 h-10 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white text-xs font-semibold">
                 {member.name.charAt(0)}
               </div>
             )}

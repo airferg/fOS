@@ -220,7 +220,7 @@ export default function CommunicationPage() {
                         className="w-8 h-8 rounded-full object-cover border border-zinc-200 dark:border-zinc-700"
                       />
                     ) : (
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
+                      <div className="w-8 h-8 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white text-xs font-medium">
                         {getInitials(member.name)}
                       </div>
                     )}
@@ -295,7 +295,7 @@ export default function CommunicationPage() {
                           className="w-10 h-10 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 flex-shrink-0"
                         />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
                           {getInitials(message.sender_name)}
                         </div>
                       )}

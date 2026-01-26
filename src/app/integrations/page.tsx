@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import ThemeToggle from '@/components/ThemeToggle'
+import HydraLogo from '@/components/HydraLogo'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 interface Integration {
@@ -327,7 +328,7 @@ function IntegrationsContent() {
       <nav className="bg-white dark:bg-zinc-950 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 dark:border-zinc-800">
         <div className="mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center">
-            <img src="/hydra.png" alt="Hydra" className="h-8 w-auto" />
+            <HydraLogo size="md" showText animate={false} />
           </Link>
           <div className="flex items-center gap-6 text-sm">
             <Link href="/dashboard" className="text-zinc-600 dark:text-zinc-400 dark:text-zinc-400 hover:text-black dark:text-white dark:hover:text-white transition-colors">

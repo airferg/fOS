@@ -204,7 +204,7 @@ export default function GeneratedPortfolioModal({ onClose, onExportPDF }: Genera
                       className="w-12 h-12 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                    <div className="w-12 h-12 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white font-semibold">
                       {getInitials(member.name)}
                     </div>
                   )}
@@ -243,7 +243,7 @@ export default function GeneratedPortfolioModal({ onClose, onExportPDF }: Genera
                 {investors.slice(0, 5).map((investor) => (
                   <div key={investor.id} className="flex items-center justify-between py-2 border-b border-zinc-200 dark:border-zinc-800">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
+                      <div className="w-8 h-8 rounded-full bg-zinc-800 dark:bg-zinc-800 flex items-center justify-center text-white text-xs font-semibold">
                         {getInitials(investor.name)}
                       </div>
                       <div>
