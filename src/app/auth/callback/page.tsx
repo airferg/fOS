@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 
 function AuthCallbackContent() {
@@ -242,8 +243,35 @@ function AuthCallbackContent() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black dark:border-white mx-auto mb-4"></div>
-        <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Completing sign in...</p>
+        <motion.div
+          className="relative w-16 h-16 mx-auto mb-6"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          {/* Pulsing ring */}
+          <motion.div
+            className="absolute inset-0 rounded-full border-2 border-zinc-200 dark:border-zinc-800"
+            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          />
+          {/* Logo */}
+          <motion.img
+            src="/hydraOS-logo.png"
+            alt="Hydra"
+            className="w-16 h-16 object-contain"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+          />
+        </motion.div>
+        <motion.p 
+          className="text-sm text-zinc-500 dark:text-zinc-400"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          Signing you in...
+        </motion.p>
       </div>
     </div>
   )
@@ -253,8 +281,18 @@ function LoadingFallback() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black dark:border-white mx-auto mb-4"></div>
-        <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">Loading...</p>
+        <div className="relative w-16 h-16 mx-auto mb-6">
+          {/* Pulsing ring */}
+          <div className="absolute inset-0 rounded-full border-2 border-zinc-200 dark:border-zinc-800 animate-pulse" />
+          {/* Logo */}
+          <img
+            src="/hydraOS-logo.png"
+            alt="Hydra"
+            className="w-16 h-16 object-contain animate-spin"
+            style={{ animationDuration: '3s' }}
+          />
+        </div>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading...</p>
       </div>
     </div>
   )

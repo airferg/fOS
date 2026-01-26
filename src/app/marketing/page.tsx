@@ -840,25 +840,84 @@ export default function GTMPage() {
                 className="space-y-4"
               >
                 {/* Activation Funnel */}
-                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4">
-                  <h3 className="text-sm font-semibold text-black dark:text-white mb-4">Activation Funnel</h3>
-                  <div className="flex items-end justify-between gap-4 h-32">
-                    {['Signup', 'First Action', 'Activated', 'Upgraded'].map((stage, i) => {
-                      const heights = [100, 72, 45, 18]
-                      const values = [342, 246, 156, 28]
+                <div className="bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 p-5">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-sm font-semibold text-black dark:text-white">Activation Funnel</h3>
+                    <span className="text-xs text-zinc-400">Last 30 days</span>
+                  </div>
+                  
+                  {/* Funnel Stages */}
+                  <div className="space-y-2">
+                    {[
+                      { stage: 'Signup', value: 342, color: 'bg-zinc-900 dark:bg-white' },
+                      { stage: 'First Action', value: 246, color: 'bg-zinc-700 dark:bg-zinc-300' },
+                      { stage: 'Activated', value: 156, color: 'bg-zinc-500 dark:bg-zinc-500' },
+                      { stage: 'Upgraded', value: 28, color: 'bg-zinc-300 dark:bg-zinc-700' },
+                    ].map((item, i, arr) => {
+                      const maxValue = arr[0].value
+                      const percentage = Math.round((item.value / maxValue) * 100)
+                      const conversionFromPrev = i > 0 ? Math.round((item.value / arr[i-1].value) * 100) : 100
+                      
                       return (
-                        <div key={stage} className="flex-1 flex flex-col items-center">
-                          <div
-                            className="w-full bg-zinc-200 dark:bg-zinc-800 rounded-t transition-all hover:bg-zinc-300 dark:hover:bg-zinc-700 cursor-pointer"
-                            style={{ height: `${heights[i]}%` }}
-                          />
-                          <div className="mt-2 text-center">
-                            <p className="text-xs text-zinc-500">{stage}</p>
-                            <p className="text-sm font-medium text-black dark:text-white">{values[i]}</p>
+                        <div key={item.stage} className="group">
+                          <div className="flex items-center gap-3">
+                            {/* Stage info */}
+                            <div className="w-24 flex-shrink-0">
+                              <p className="text-xs font-medium text-black dark:text-white">{item.stage}</p>
+                              <p className="text-lg font-semibold text-black dark:text-white">{item.value.toLocaleString()}</p>
+                            </div>
+                            
+                            {/* Bar */}
+                            <div className="flex-1 relative">
+                              <div className="h-10 bg-zinc-100 dark:bg-zinc-800/50 rounded-lg overflow-hidden">
+                                <motion.div
+                                  className={`h-full ${item.color} rounded-lg transition-all group-hover:opacity-80`}
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${percentage}%` }}
+                                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                                />
+                              </div>
+                              {/* Percentage label inside bar */}
+                              <div className="absolute inset-y-0 left-3 flex items-center">
+                                <span className={`text-xs font-medium ${percentage > 30 ? 'text-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-400'}`}>
+                                  {percentage}%
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Conversion rate */}
+                            <div className="w-16 text-right flex-shrink-0">
+                              {i > 0 && (
+                                <div className="flex items-center justify-end gap-1">
+                                  <svg className="w-3 h-3 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                                  </svg>
+                                  <span className="text-xs text-zinc-500">{conversionFromPrev}%</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )
                     })}
+                  </div>
+                  
+                  {/* Summary */}
+                  <div className="mt-5 pt-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div>
+                        <p className="text-xs text-zinc-500">Overall Conversion</p>
+                        <p className="text-sm font-semibold text-black dark:text-white">8.2%</p>
+                      </div>
+                      <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-800" />
+                      <div>
+                        <p className="text-xs text-zinc-500">Top Drop-off</p>
+                        <p className="text-sm font-medium text-black dark:text-white">Activated → Upgraded</p>
+                      </div>
+                    </div>
+                    <button className="px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
+                      View Details
+                    </button>
                   </div>
                 </div>
 
