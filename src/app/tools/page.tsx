@@ -72,19 +72,24 @@ export default function ToolsPage() {
 
   const loadIntegrations = async () => {
     try {
+      // Only load user profile (keep real)
       const profileRes = await fetch('/api/profile')
       const profileData = await profileRes.json()
       setUser(profileData)
 
-      // Fetch connected integration status
-      const statusRes = await fetch('/api/integrations/status')
-      const statusData = await statusRes.json()
-      const integrationStatus = statusData.status || {}
+      // Hardcoded integration status (5 connected: gmail, slack, notion, github, stripe)
+      const hardcodedIntegrationStatus: Record<string, boolean> = {
+        'gmail': true,
+        'slack': true,
+        'notion': true,
+        'github': true,
+        'stripe': true,
+      }
 
       // Map integrations with connection status, user count, and pricing
       const integrationsWithStatus: Integration[] = ALL_INTEGRATIONS.map(integration => {
-        const isConnected = integrationStatus[integration.id] || false
-        // Mock user count for connected integrations (in real app, fetch from API)
+        const isConnected = hardcodedIntegrationStatus[integration.id] || false
+        // Mock user count for connected integrations
         const usersConnected = isConnected ? Math.floor(Math.random() * 10) + 1 : 0
         // Mock pricing (in real app, fetch from integration config)
         const monthlyCost = integration.id === 'slack' ? 0 : null // Free for most, can be customized

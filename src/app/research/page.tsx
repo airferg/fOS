@@ -280,23 +280,18 @@ function ScheduleInterviewModal({
   }, [])
   
   const loadContacts = async () => {
-    try {
-      const res = await fetch('/api/contacts')
-      const data = await res.json()
-      setContacts(data.contacts || [])
-    } catch (error) {
-      console.error('Error loading contacts:', error)
-      // Use mock contacts as fallback
-      setContacts([
-        { id: 'c1', name: 'Sarah Chen', email: 'sarah@acme.com', company: 'Acme Corp', title: 'VP Operations', relationship: 'Lead' },
-        { id: 'c2', name: 'Marcus Rivera', email: 'marcus@techstart.io', company: 'TechStart', title: 'Founder', relationship: 'Customer' },
-        { id: 'c3', name: 'Emily Watson', email: 'emily@globalco.com', company: 'GlobalCo', title: 'Product Manager', relationship: 'Prospect' },
-        { id: 'c4', name: 'James Park', email: 'james@startup.co', company: 'Startup Co', title: 'CEO', relationship: 'Lead' },
-        { id: 'c5', name: 'Lisa Thompson', email: 'lisa@enterprise.com', company: 'Enterprise Inc', title: 'Director', relationship: 'Customer' },
-      ])
-    } finally {
-      setLoadingContacts(false)
-    }
+    // Use hardcoded demo contacts (subset of 621 for interview scheduling)
+    setContacts([
+      { id: 'c1', name: 'Sarah Chen', email: 'sarah@acme.com', company: 'Acme Corp', title: 'VP Operations', relationship: 'Lead' },
+      { id: 'c2', name: 'Marcus Rivera', email: 'marcus@techstart.io', company: 'TechStart', title: 'Founder', relationship: 'Customer' },
+      { id: 'c3', name: 'Emily Watson', email: 'emily@globalco.com', company: 'GlobalCo', title: 'Product Manager', relationship: 'Prospect' },
+      { id: 'c4', name: 'James Park', email: 'james@startup.co', company: 'Startup Co', title: 'CEO', relationship: 'Lead' },
+      { id: 'c5', name: 'Lisa Thompson', email: 'lisa@enterprise.com', company: 'Enterprise Inc', title: 'Director', relationship: 'Customer' },
+      { id: 'c6', name: 'Alex Johnson', email: 'alex@techcorp.com', company: 'TechCorp', title: 'CTO', relationship: 'Investor' },
+      { id: 'c7', name: 'Jordan Smith', email: 'jordan@startup.io', company: 'StartupIO', title: 'Founder', relationship: 'Advisor' },
+      { id: 'c8', name: 'Taylor Brown', email: 'taylor@innovate.com', company: 'InnovateLabs', title: 'VP Product', relationship: 'Partner' },
+    ])
+    setLoadingContacts(false)
   }
   
   const filteredContacts = contacts.filter(c => 

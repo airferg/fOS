@@ -104,7 +104,7 @@ const mockSequences: OutboundSequence[] = [
 
 const mockCohorts: ActivationCohort[] = [
   { id: 'c1', name: 'Jan 2026 Signups', signups: 342, activated: 156, upgraded: 28, topDropoff: 'First integration connect', avgTimeToActivation: 2.4 },
-  { id: 'c2', name: 'Dec 2025 Signups', signups: 289, activated: 134, upgraded: 31, topDropoff: 'Team invite step', avgTimeToActivation: 3.1 },
+  { id: 'c2', name: 'Dec 2025 Signups', signups: 289, activated: 133, upgraded: 32, topDropoff: 'Team invite step', avgTimeToActivation: 3.1 },
 ]
 
 const mockExperiments: GtmExperiment[] = [

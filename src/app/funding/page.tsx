@@ -97,87 +97,86 @@ export default function FundingPage() {
 
   const loadFundingData = async () => {
     try {
+      // Only load user profile (keep real)
       const profileRes = await fetch('/api/profile')
       const profileData = await profileRes.json()
       setUser(profileData)
 
-      const res = await fetch('/api/funding')
-      const data = await res.json()
-
-      const roundsData = (data.rounds || []).map((round: any) => ({
-        id: round.id,
-        round_name: round.round_name,
-        round_type: round.round_type,
-        amount_raised: Number(round.amount_raised) || 0,
-        close_date: round.close_date,
-        status: round.status || 'planned',
-        lead_investor: round.lead_investor
-      }))
-
-      // Filter out investors that don't belong to any existing round (orphaned investors)
-      const validRoundIds = new Set(roundsData.map((r: FundingRound) => r.id))
-
-      const investorsData = (data.investors || [])
-        .filter((inv: any) => {
-          // Only include investors that have a funding_round_id that matches an existing round
-          return inv.funding_round_id && validRoundIds.has(inv.funding_round_id)
-        })
-        .map((inv: any) => {
-          // Handle nested funding_rounds data from Supabase
-          const round = inv.funding_rounds || roundsData.find((r: FundingRound) => r.id === inv.funding_round_id)
-          return {
-            id: inv.id,
-            name: inv.name,
-            email: inv.email,
-            firm: inv.firm,
-            investment_amount: Number(inv.investment_amount) || 0,
-            equity_percent: Number(inv.equity_percent) || 0,
-            round_name: round?.round_name || inv.round_name || 'Pre-Seed',
-            funding_round_id: inv.funding_round_id,
-            investor_type: inv.investor_type || 'angel',
-            investment_date: inv.investment_date,
-            notes: inv.notes,
-            is_lead: inv.is_lead || false
-          }
-        })
-
-      setRounds(roundsData)
-      setInvestors(investorsData)
-
-      // Calculate stats from actual data - count closed and raising rounds (committed money)
-      // Planned rounds don't count as they're not yet committed
-      const totalRaised = roundsData
-        .filter((r: FundingRound) => r.status === 'closed' || r.status === 'raising')
-        .reduce((sum: number, r: FundingRound) => sum + (Number(r.amount_raised) || 0), 0)
-
-      // Fetch startup profile to get monthly burn rate
-      const startupProfileRes = await fetch('/api/startup-profile')
-      let monthlyBurn = 0
-      let cashRemaining = totalRaised
-
-      if (startupProfileRes.ok) {
-        const startupProfileData = await startupProfileRes.json()
-        if (startupProfileData.profile) {
-          monthlyBurn = Number(startupProfileData.profile.burn_rate) || 0
-          // Use total_raised from profile if available, otherwise use calculated totalRaised
-          cashRemaining = Number(startupProfileData.profile.total_raised) || totalRaised
+      // Hardcoded demo funding data
+      const hardcodedRounds: FundingRound[] = [
+        {
+          id: 'round-1',
+          round_name: 'Pre-Seed',
+          round_type: 'Pre-Seed',
+          amount_raised: 6500,
+          close_date: '2025-01-24',
+          status: 'closed',
+          lead_investor: 'Sequoia Capital'
         }
-      }
+      ]
 
-      // Calculate runway based on actual data
-      const currentRunway = monthlyBurn > 0
-        ? Math.floor((cashRemaining / monthlyBurn) * 10) / 10
-        : 0
+      const hardcodedInvestors: Investor[] = [
+        {
+          id: 'inv-1',
+          name: 'Sequoia Capital',
+          email: 'contact@sequoia.com',
+          firm: 'Sequoia Capital',
+          investment_amount: 3000,
+          equity_percent: 7.5,
+          round_name: 'Pre-Seed',
+          funding_round_id: 'round-1',
+          investor_type: 'vc',
+          investment_date: '2025-01-24',
+          notes: 'Lead investor',
+          is_lead: true
+        },
+        {
+          id: 'inv-2',
+          name: 'David Investor',
+          email: 'david@example.com',
+          firm: null,
+          investment_amount: 2000,
+          equity_percent: 5.0,
+          round_name: 'Pre-Seed',
+          funding_round_id: 'round-1',
+          investor_type: 'angel',
+          investment_date: '2025-01-24',
+          notes: null,
+          is_lead: false
+        },
+        {
+          id: 'inv-3',
+          name: 'California Angels',
+          email: 'info@calangels.com',
+          firm: 'California Angels',
+          investment_amount: 1500,
+          equity_percent: 2.5,
+          round_name: 'Pre-Seed',
+          funding_round_id: 'round-1',
+          investor_type: 'angel',
+          investment_date: '2025-01-24',
+          notes: null,
+          is_lead: false
+        }
+      ]
 
-      // Update stats with smooth transitions
-      setStats(prevStats => ({
+      setRounds(hardcodedRounds)
+      setInvestors(hardcodedInvestors)
+
+      // Hardcoded stats
+      const totalRaised = 6500
+      const monthlyBurn = 2000
+      const cashRemaining = 4500
+      const currentRunway = monthlyBurn > 0 ? Math.floor((cashRemaining / monthlyBurn) * 10) / 10 : 0
+
+      setStats({
         totalRaised,
         currentRunway,
         monthlyBurn,
-        cashRemaining: cashRemaining || totalRaised
-      }))
+        cashRemaining
+      })
 
-      // Use hardcoded documents instead of API
+      // Use hardcoded documents
       setDocuments(hardcodedDocuments)
     } catch (error) {
       console.error('Error loading funding data:', error)

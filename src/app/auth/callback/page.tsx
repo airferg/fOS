@@ -156,7 +156,6 @@ function AuthCallbackContent() {
 
           if (profile) {
             console.log('[OAuth Callback Client] Profile exists:', profile)
-            console.log('[OAuth Callback Client] Onboarding complete:', profile.onboarding_complete)
             
             // Wait a moment to ensure cookies are set
             console.log('[OAuth Callback Client] Waiting for cookies to be set...')
@@ -166,15 +165,9 @@ function AuthCallbackContent() {
             const { data: { session: verifySession } } = await supabase.auth.getSession()
             console.log('[OAuth Callback Client] Session verification:', { hasSession: !!verifySession })
             
-            // Redirect based on onboarding status
-            // Use window.location to ensure cookies are set before navigation
-            if (profile.onboarding_complete) {
-              console.log('[OAuth Callback Client] Redirecting to dashboard...')
-              window.location.href = '/dashboard'
-            } else {
-              console.log('[OAuth Callback Client] Redirecting to onboarding...')
-              window.location.href = '/onboarding'
-            }
+            // Always redirect to dashboard (skip onboarding)
+            console.log('[OAuth Callback Client] Redirecting to dashboard...')
+            window.location.href = '/dashboard'
             return
           } else {
             // Profile doesn't exist, create it using client-side Supabase
@@ -191,7 +184,7 @@ function AuthCallbackContent() {
                 id: user.id,
                 email: user.email!,
                 name: userName,
-                onboarding_complete: false,
+                onboarding_complete: true, // Set to true to skip onboarding
               })
               .select()
               .single()
@@ -206,8 +199,8 @@ function AuthCallbackContent() {
             }
 
             console.log('[OAuth Callback Client] Profile created successfully:', newProfile)
-            console.log('[OAuth Callback Client] Redirecting to onboarding...')
-            window.location.href = '/onboarding'
+            console.log('[OAuth Callback Client] Redirecting to dashboard...')
+            window.location.href = '/dashboard'
           }
         } catch (apiError: any) {
           console.error('[OAuth Callback Client] Unexpected error:', apiError)

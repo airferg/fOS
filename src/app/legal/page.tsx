@@ -160,21 +160,27 @@ export default function LegalPage() {
 
   const loadData = async () => {
     try {
-      // Load user profile
+      // Only load user profile (keep real)
       const profileRes = await fetch('/api/profile')
       const profileData = await profileRes.json()
       setUser(profileData)
 
-      // Load team members
-      const teamRes = await fetch('/api/team')
-      const teamData = await teamRes.json()
-      const teamMembers = teamData.teamMembers || []
-      setTeam(teamMembers)
+      // Hardcoded demo team data (8 members - matching team page)
+      const hardcodedTeamMembers: TeamMember[] = [
+        { id: '1', name: 'Marcus', role: 'Founder', title: 'CEO', equity_percent: 25, vested_percent: 12.5, avatar_url: null, email: 'marcus@hydra.com' },
+        { id: '2', name: 'Kean', role: 'Founder', title: 'CTO', equity_percent: 25, vested_percent: 12.5, avatar_url: null, email: 'kean@hydra.com' },
+        { id: '3', name: 'John', role: 'Employee', title: 'Lead Engineer', equity_percent: 3, vested_percent: 1.5, avatar_url: null, email: 'john@hydra.com' },
+        { id: '4', name: 'Chris', role: 'Employee', title: 'Product Manager', equity_percent: 2, vested_percent: 1, avatar_url: null, email: 'chris@hydra.com' },
+        { id: '5', name: 'David', role: 'Employee', title: 'Designer', equity_percent: 1.5, vested_percent: 0.75, avatar_url: null, email: 'david@hydra.com' },
+        { id: '6', name: 'Maria', role: 'Employee', title: 'Marketing Lead', equity_percent: 1.5, vested_percent: 0.75, avatar_url: null, email: 'maria@hydra.com' },
+        { id: '7', name: 'Raj', role: 'Employee', title: 'Engineer', equity_percent: 1, vested_percent: 0.5, avatar_url: null, email: 'raj@hydra.com' },
+        { id: '8', name: 'Priya', role: 'Employee', title: 'Operations', equity_percent: 1, vested_percent: 0.5, avatar_url: null, email: 'priya@hydra.com' },
+      ]
+      setTeam(hardcodedTeamMembers)
       
-      // Initialize agreement status for team (would be from DB)
+      // Initialize agreement status for team
       const agreements: Record<string, { ip: 'signed' | 'pending' | 'none', employment: 'signed' | 'pending' | 'none' }> = {}
-      teamMembers.forEach((m: TeamMember) => {
-        // Assume founders have signed, others need signing
+      hardcodedTeamMembers.forEach((m: TeamMember) => {
         const isFounder = m.role?.toLowerCase().includes('founder') || m.role?.toLowerCase().includes('ceo') || m.role?.toLowerCase().includes('cto')
         agreements[m.id] = {
           ip: isFounder ? 'signed' : 'none',
@@ -183,46 +189,75 @@ export default function LegalPage() {
       })
       setTeamAgreements(agreements)
 
-      // Load funding data first to filter investors
-      const fundingRes = await fetch('/api/funding')
-      const fundingData = await fundingRes.json()
-      const rounds = (fundingData.rounds || []) as FundingRound[]
-      setFundingRounds(rounds)
-      
-      // Get IDs of all valid rounds (closed or raising - committed money)
-      const validRoundIds = new Set(
-        rounds
-          .filter((r: FundingRound) => r.status === 'closed' || r.status === 'raising')
-          .map((r: FundingRound) => r.id)
-      )
+      // Hardcoded funding rounds
+      const hardcodedRounds: FundingRound[] = [
+        {
+          id: 'round-1',
+          round_name: 'Pre-Seed',
+          round_type: 'Pre-Seed',
+          amount_raised: 6500,
+          close_date: '2025-01-24',
+          status: 'closed',
+          lead_investor: 'Sequoia Capital'
+        }
+      ]
+      setFundingRounds(hardcodedRounds)
 
-      // Load investors and filter to only those from valid rounds
-      const investorsRes = await fetch('/api/investors')
-      const investorsData = await investorsRes.json()
-      const allInvestors = (investorsData.investors || []) as Investor[]
+      // Hardcoded investors (matching funding page)
+      const hardcodedInvestors: Investor[] = [
+        {
+          id: 'inv-1',
+          name: 'Sequoia Capital',
+          email: 'contact@sequoia.com',
+          firm: 'Sequoia Capital',
+          investment_amount: 3000,
+          equity_percent: 7.5,
+          round_name: 'Pre-Seed',
+          funding_round_id: 'round-1',
+          investor_type: 'vc',
+          investment_date: '2025-01-24',
+          notes: 'Lead investor',
+          is_lead: true
+        },
+        {
+          id: 'inv-2',
+          name: 'David Investor',
+          email: 'david@example.com',
+          firm: null,
+          investment_amount: 2000,
+          equity_percent: 5.0,
+          round_name: 'Pre-Seed',
+          funding_round_id: 'round-1',
+          investor_type: 'angel',
+          investment_date: '2025-01-24',
+          notes: null,
+          is_lead: false
+        },
+        {
+          id: 'inv-3',
+          name: 'California Angels',
+          email: 'info@calangels.com',
+          firm: 'California Angels',
+          investment_amount: 1500,
+          equity_percent: 2.5,
+          round_name: 'Pre-Seed',
+          funding_round_id: 'round-1',
+          investor_type: 'angel',
+          investment_date: '2025-01-24',
+          notes: null,
+          is_lead: false
+        }
+      ]
       
-      // Filter to only investors from valid rounds
-      const validInvestors = allInvestors.filter((inv: Investor) => 
-        inv.funding_round_id && validRoundIds.has(inv.funding_round_id)
-      )
+      setInvestors(hardcodedInvestors)
       
-      // Deduplicate by investor ID (not name) to remove true duplicates but keep multiple investments
-      const investorMap = new Map<string, Investor>()
-      validInvestors.forEach((inv: Investor) => {
-        investorMap.set(inv.id, inv)
-      })
-      const uniqueInvestors = Array.from(investorMap.values())
-      
-      setInvestors(uniqueInvestors)
-      
-      // Calculate total raised from all valid investors' investment amounts
-      const total = uniqueInvestors.reduce((sum: number, inv: Investor) => sum + (Number(inv.investment_amount) || 0), 0)
+      // Calculate total raised
+      const total = hardcodedInvestors.reduce((sum: number, inv: Investor) => sum + (Number(inv.investment_amount) || 0), 0)
       setTotalRaised(total)
       
-      // Initialize SAFE status for investors (would be from DB)
+      // Initialize SAFE status for investors
       const safeStatus: Record<string, 'signed' | 'pending' | 'draft'> = {}
-      uniqueInvestors.forEach((inv: Investor) => {
-        // Investors from valid rounds have signed SAFEs
+      hardcodedInvestors.forEach((inv: Investor) => {
         safeStatus[inv.id] = 'signed'
       })
       setInvestorSafeStatus(safeStatus)

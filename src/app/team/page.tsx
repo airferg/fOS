@@ -122,101 +122,30 @@ export default function TeamPage() {
 
   const loadTeam = async () => {
     try {
+      // Only load user profile (keep real)
       const profileRes = await fetch('/api/profile')
       const profileData = await profileRes.json()
       setUser(profileData)
 
-      const [teamRes, investorsRes] = await Promise.all([
-        fetch('/api/team'),
-        fetch('/api/investors').catch(() => ({ json: () => ({ investors: [] }) }))
-      ])
+      // Hardcoded demo team data (8 members)
+      const hardcodedTeamMembers: TeamMember[] = [
+        { id: '1', name: 'Marcus', role: 'Founder', title: 'CEO', equity_percent: 25, vested_percent: 12.5, avatar_url: null, email: 'marcus@hydra.com' },
+        { id: '2', name: 'Kean', role: 'Founder', title: 'CTO', equity_percent: 25, vested_percent: 12.5, avatar_url: null, email: 'kean@hydra.com' },
+        { id: '3', name: 'John', role: 'Employee', title: 'Lead Engineer', equity_percent: 3, vested_percent: 1.5, avatar_url: null, email: 'john@hydra.com' },
+        { id: '4', name: 'Chris', role: 'Employee', title: 'Product Manager', equity_percent: 2, vested_percent: 1, avatar_url: null, email: 'chris@hydra.com' },
+        { id: '5', name: 'David', role: 'Employee', title: 'Designer', equity_percent: 1.5, vested_percent: 0.75, avatar_url: null, email: 'david@hydra.com' },
+        { id: '6', name: 'Maria', role: 'Employee', title: 'Marketing Lead', equity_percent: 1.5, vested_percent: 0.75, avatar_url: null, email: 'maria@hydra.com' },
+        { id: '7', name: 'Raj', role: 'Employee', title: 'Engineer', equity_percent: 1, vested_percent: 0.5, avatar_url: null, email: 'raj@hydra.com' },
+        { id: '8', name: 'Priya', role: 'Employee', title: 'Operations', equity_percent: 1, vested_percent: 0.5, avatar_url: null, email: 'priya@hydra.com' },
+      ]
+
+      // Hardcoded investor equity (from $6.5K Pre-Seed round)
+      const totalInvestorEquity = 15.0 // 15% to investors
       
-      const data = await teamRes.json()
-      let teamMembers = data.teamMembers || []
-      
-      // Fetch investors for equity calculation
-      const investorsData = await investorsRes.json()
-      const investors = investorsData.investors || []
-      
-      // Filter to only valid investors (API should already do this, but double-check)
-      // Investors should have a valid funding_round_id that matches an existing round
-      const validInvestors = investors.filter((inv: any) => {
-        // If investor has no funding_round_id, exclude it (orphaned)
-        return inv.funding_round_id !== null && inv.funding_round_id !== undefined
-      })
-      
-      // Calculate total investor equity from valid investors only
-      const totalInvestorEquity = validInvestors.reduce((sum: number, inv: any) => {
-        return sum + (Number(inv.equity_percent) || 0)
-      }, 0)
-      
-      console.log(`[Team Page] Loaded ${validInvestors.length} valid investors (${investors.length} total), equity: ${totalInvestorEquity.toFixed(2)}%`)
       setInvestorEquity(totalInvestorEquity)
       
-      // Check if current user has a team_members entry by matching email
-      // (All team members have the same user_id, so we match by email to find the user's own entry)
-      const userTeamMember = teamMembers.find((m: any) => 
-        m.email === profileData.email || 
-        (profileData.email && m.email?.toLowerCase() === profileData.email.toLowerCase())
-      )
-      
-      if (!userTeamMember && profileData.id) {
-        // Create team_members entry for current user
-        try {
-          const createRes = await fetch('/api/team', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: profileData.name || profileData.email?.split('@')[0] || 'You',
-              email: profileData.email,
-              role: 'Founder',
-              title: profileData.position || 'Founder',
-              equity_percent: 0,
-              vested_percent: 0,
-              start_date: new Date().toISOString()
-            })
-          })
-          if (createRes.ok) {
-            // Reload team after creating user entry
-            const reloadRes = await fetch('/api/team')
-            const reloadData = await reloadRes.json()
-            teamMembers = reloadData.teamMembers || []
-          }
-        } catch (err) {
-          console.error('Error creating user team member:', err)
-        }
-      }
-      
-      setTeamMembers(teamMembers)
-      
-      // Check if equity totals are valid and auto-fix if needed
-      const totalTeamEquity = teamMembers.reduce((sum: number, m: any) => sum + (Number(m.equity_percent) || 0), 0)
-      const totalEquity = totalTeamEquity + totalInvestorEquity
-      
-      // If total is significantly off (more than 0.5% error) or if there are no investors but team equity < 100%, auto-recalculate
-      const shouldRecalculate = Math.abs(totalEquity - 100) > 0.5 && totalEquity > 0
-      const noInvestorsButIncomplete = totalInvestorEquity === 0 && totalTeamEquity < 99.5 && teamMembers.length > 0
-      
-      if (shouldRecalculate || noInvestorsButIncomplete) {
-        console.warn(`[Team Page] Equity total is ${totalEquity.toFixed(2)}% (Team: ${totalTeamEquity.toFixed(2)}%, Investors: ${totalInvestorEquity.toFixed(2)}%), auto-recalculating...`)
-        try {
-          const recalcRes = await fetch('/api/equity/recalculate', { method: 'POST' })
-          if (recalcRes.ok) {
-            // Reload team data after recalculation
-            const reloadRes = await fetch('/api/team')
-            const reloadData = await reloadRes.json()
-            setTeamMembers(reloadData.teamMembers || [])
-            
-            const reloadInvestorsRes = await fetch('/api/investors').catch(() => ({ json: () => ({ investors: [] }) }))
-            const reloadInvestorsData = await reloadInvestorsRes.json()
-            const reloadInvestors = reloadInvestorsData.investors || []
-            const newTotalInvestorEquity = reloadInvestors.reduce((sum: number, inv: any) => sum + (Number(inv.equity_percent) || 0), 0)
-            setInvestorEquity(newTotalInvestorEquity)
-          }
-        } catch (err) {
-          console.error('Error auto-recalculating equity:', err)
-        }
-      }
+      // Use hardcoded team members
+      setTeamMembers(hardcodedTeamMembers)
     } catch (error) {
       console.error('Error loading team:', error)
     } finally {

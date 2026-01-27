@@ -53,17 +53,27 @@ export default function PortfolioPage() {
 
   const loadProfile = async () => {
     try {
+      // Only load user profile (keep real)
       const profileRes = await fetch('/api/profile')
       const profileData = await profileRes.json()
       setUser(profileData)
 
-      const res = await fetch('/api/startup-profile')
-      const data = await res.json()
-
-      if (data.profile) {
-        setProfile(data.profile)
-        setFormData(data.profile)
+      // Hardcoded demo startup profile
+      const hardcodedProfile: StartupProfile = {
+        company_name: 'Hydra',
+        tagline: 'The AI-powered operating system for startup founders',
+        description: 'Hydra helps early-stage founders leverage their existing skills, network, funds, and experience to build their startup more efficiently.',
+        industry: 'SaaS',
+        stage: 'Pre-Seed',
+        founded_date: '2025-01-01',
+        website_url: 'https://hydra.com',
+        logo_url: '/hydraOS-logo.png',
+        team_size: 8,
+        location: 'San Francisco, CA'
       }
+
+      setProfile(hardcodedProfile)
+      setFormData(hardcodedProfile)
     } catch (error) {
       console.error('Error loading startup profile:', error)
     } finally {

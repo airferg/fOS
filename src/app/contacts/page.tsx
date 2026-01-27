@@ -43,15 +43,61 @@ export default function NetworkPage() {
     loadData()
   }, [])
 
+  // Generate hardcoded demo contacts (621 total)
+  const generateHardcodedContacts = (): Contact[] => {
+    const contacts: Contact[] = []
+    const firstNames = ['Alex', 'Jordan', 'Taylor', 'Morgan', 'Casey', 'Riley', 'Avery', 'Quinn', 'Sage', 'River', 'Blake', 'Cameron', 'Dakota', 'Emery', 'Finley', 'Harper', 'Hayden', 'Jamie', 'Kai', 'Logan', 'Parker', 'Peyton', 'Reese', 'Rowan', 'Skylar', 'Tyler']
+    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Thompson', 'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez']
+    const companies = ['TechCorp', 'StartupXYZ', 'InnovateLabs', 'ScaleUp', 'GrowthCo', 'VentureHub', 'FounderSpace', 'LaunchPad', 'Accelerate', 'Disrupt', 'BuildCo', 'NextGen', 'FutureTech', 'CloudScale', 'DataFlow', 'AIWorks', 'DevOps', 'SaaSPro', 'PlatformX', 'EnterpriseY']
+    const positions = ['CEO', 'CTO', 'CFO', 'CMO', 'Founder', 'Co-Founder', 'VP Engineering', 'VP Sales', 'Head of Product', 'Head of Growth', 'Investor', 'Advisor', 'Board Member', 'Product Manager', 'Engineering Manager', 'Sales Director', 'Marketing Director', 'Operations Manager']
+    const roles: Array<'investor' | 'founder' | 'advisor'> = ['investor', 'founder', 'advisor']
+    const strengths: Array<'weak' | 'medium' | 'strong'> = ['weak', 'medium', 'strong']
+
+    // Generate 621 contacts
+    for (let i = 0; i < 621; i++) {
+      const firstName = firstNames[Math.floor(Math.random() * firstNames.length)]
+      const lastName = lastNames[Math.floor(Math.random() * lastNames.length)]
+      const name = `${firstName} ${lastName}`
+      const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${companies[Math.floor(Math.random() * companies.length)].toLowerCase()}.com`
+      const company = companies[Math.floor(Math.random() * companies.length)]
+      const position = positions[Math.floor(Math.random() * positions.length)]
+      const role = roles[Math.floor(Math.random() * roles.length)]
+      const strength = strengths[Math.floor(Math.random() * strengths.length)]
+      
+      // Random date within last year
+      const daysAgo = Math.floor(Math.random() * 365)
+      const lastContacted = new Date()
+      lastContacted.setDate(lastContacted.getDate() - daysAgo)
+
+      contacts.push({
+        id: `contact-${i + 1}`,
+        name,
+        email,
+        role: role,
+        position,
+        company,
+        connection_strength: strength,
+        last_contacted: lastContacted.toISOString().split('T')[0],
+        avatar_url: null,
+        linkedin_url: `https://linkedin.com/in/${firstName.toLowerCase()}-${lastName.toLowerCase()}`,
+        notes: null,
+        calendly_url: null,
+        is_founder: role === 'founder'
+      })
+    }
+
+    return contacts
+  }
+
   const loadData = async () => {
     try {
+      // Only load user profile (keep real)
       const profileRes = await fetch('/api/profile')
       const profileData = await profileRes.json()
       setUser(profileData)
 
-      const res = await fetch('/api/contacts')
-      const data = await res.json()
-      setContacts(data.contacts || [])
+      // Use hardcoded contacts
+      setContacts(generateHardcodedContacts())
     } catch (error) {
       console.error('Error loading network data:', error)
     } finally {

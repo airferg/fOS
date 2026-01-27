@@ -158,66 +158,37 @@ export default function DashboardPage() {
 
   const loadDashboardData = async () => {
     try {
+      // Only load user profile (keep real)
       const profileRes = await fetch('/api/profile')
       const profileData = await profileRes.json()
       setUser(profileData)
 
-      const [contactsRes, teamRes, integrationsRes, fundingRes, marketingRes] = await Promise.all([
-        fetch('/api/contacts').catch(() => ({ json: () => ({ contacts: [] }) })),
-        fetch('/api/team').catch(() => ({ json: () => ({ teamMembers: [] }) })),
-        fetch('/api/integrations/status').catch(() => ({ json: () => ({ status: {} }) })),
-        fetch('/api/funding').catch(() => ({ json: () => ({ stats: { totalRaised: 6500 } }) })),
-        fetch('/api/marketing').catch(() => ({ json: () => ({ stats: {} }) }))
-      ])
-
-      const contactsData = await contactsRes.json()
-      const teamData = await teamRes.json()
-      const integrationsData = await integrationsRes.json()
-      const fundingData = await fundingRes.json()
-      const marketingData = await marketingRes.json()
-
-      // Get connected integrations - only count integrations that are in the tools list
-      const integrationStatus = integrationsData.status || {}
-      // Define the same list of integrations as the tools page uses (from ALL_INTEGRATIONS)
-      const validIntegrationIds = [
-        'gmail', 'google-calendar', 'outlook', 'slack', 'discord', 'zoom', 'calendly',
-        'intercom', 'zendesk', 'notion', 'jira', 'asana', 'tally', 'typeform',
-        'github', 'gitlab', 'vercel', 'stripe', 'quickbooks',
-        'linkedin', 'twitter', 'mailchimp', 'hubspot'
+      // Hardcoded demo data
+      const hardcodedTeamMembers: TeamMember[] = [
+        { id: '1', name: 'Marcus', avatar_url: null },
+        { id: '2', name: 'Kean', avatar_url: null },
+        { id: '3', name: 'John', avatar_url: null },
+        { id: '4', name: 'Chris', avatar_url: null },
+        { id: '5', name: 'David', avatar_url: null },
+        { id: '6', name: 'Maria', avatar_url: null },
+        { id: '7', name: 'Raj', avatar_url: null },
+        { id: '8', name: 'Priya', avatar_url: null },
       ]
-      const connectedIntegrations = validIntegrationIds.filter(
-        id => integrationStatus[id] === true
-      ) || []
 
-      // Calculate network trend based on recent activity
-      const contacts = contactsData.contacts || []
-      const recentContacts = contacts.filter((c: any) => {
-        const createdDate = new Date(c.created_at)
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-        return createdDate >= thirtyDaysAgo
-      })
-      const networkTrend = contacts.length > 0
-        ? Math.round((recentContacts.length / contacts.length) * 100)
-        : 0
-
-      // Get the most recent funding round name
-      const rounds = fundingData.rounds || []
-      const latestRound = rounds[0]
-      const fundingStage = latestRound?.round_name || (fundingData.stats?.totalRaised > 0 ? 'Funded' : 'Not yet funded')
+      const connectedIntegrations = ['gmail', 'slack', 'notion', 'github', 'stripe']
 
       setStats({
-        networkConnections: contacts.length,
-        networkTrend,
-        teamMembers: teamData.teamMembers?.slice(0, 8) || [],
-        teamCount: teamData.teamMembers?.length || 0,
-        activeTools: connectedIntegrations.length,
-        connectedIntegrations: connectedIntegrations || [],
-        totalRaised: fundingData.stats?.totalRaised || 0,
-        fundingStage,
-        marketingReach: marketingData.stats?.totalReach || 0,
-        engagementRate: marketingData.stats?.avgEngagement || 0,
-        weeklyGrowth: marketingData.stats?.weeklyGrowth || 0
+        networkConnections: 621,
+        networkTrend: 100, // 100% growth this month
+        teamMembers: hardcodedTeamMembers,
+        teamCount: 8,
+        activeTools: 5,
+        connectedIntegrations: connectedIntegrations,
+        totalRaised: 6500,
+        fundingStage: 'Pre-Seed',
+        marketingReach: 0,
+        engagementRate: 0,
+        weeklyGrowth: 0
       })
     } catch (error) {
       console.error('Error loading dashboard:', error)
