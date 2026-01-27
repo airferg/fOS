@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { summarizeNorthStar } from '@/lib/north-star-summarizer'
 
 export async function GET(req: NextRequest) {
@@ -18,7 +19,66 @@ export async function GET(req: NextRequest) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      console.error('[Profile API] Database error:', {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      })
+      
+      // If user doesn't exist (PGRST116), create a basic profile
+      if (error.code === 'PGRST116') {
+        const userName = user.user_metadata?.full_name || 
+                        user.user_metadata?.name || 
+                        user.email?.split('@')[0] ||
+                        'User'
+        
+        try {
+          // Use admin client to bypass RLS when creating user profile
+          // Insert without display_name since column doesn't exist in schema
+          // We'll set it client-side from name
+          const { data: newUser, error: insertError } = await supabaseAdmin
+            .from('users')
+            .insert({
+              id: user.id,
+              email: user.email!,
+              name: userName,
+              onboarding_complete: true,
+            })
+            .select()
+            .single()
+          
+          if (insertError) {
+            console.error('[Profile API] Insert error:', insertError)
+            return NextResponse.json({ 
+              error: insertError.message || 'Failed to create profile',
+              code: insertError.code,
+              details: insertError.details 
+            }, { status: 400 })
+          }
+          
+          // Add display_name client-side since column doesn't exist
+          return NextResponse.json({ ...newUser, display_name: userName })
+        } catch (insertErr: any) {
+          console.error('[Profile API] Exception during insert:', insertErr)
+          return NextResponse.json({ 
+            error: insertErr.message || 'Failed to create profile',
+            details: insertErr.toString()
+          }, { status: 400 })
+        }
+      }
+      
+      return NextResponse.json({ 
+        error: error.message || 'Database error',
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      }, { status: 400 })
+    }
+
+    // Since display_name column doesn't exist, always set it client-side from name
+    if (data && data.name) {
+      return NextResponse.json({ ...data, display_name: data.name })
     }
 
     return NextResponse.json(data)

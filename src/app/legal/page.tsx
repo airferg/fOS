@@ -166,7 +166,7 @@ export default function LegalPage() {
       setUser(profileData)
 
       // Hardcoded demo team data (8 members - user is the only founder)
-      const userName = profileData.name || profileData.email?.split('@')[0] || 'User'
+      const userName = profileData.display_name || profileData.name || profileData.email?.split('@')[0] || 'User'
       const userEmail = profileData.email || 'user@hydra.com'
       
       const hardcodedTeamMembers: TeamMember[] = [

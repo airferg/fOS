@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import { supabase } from '@/lib/supabase'
 import AppLayout from '@/components/AppLayout'
 import { PageBackground } from '@/components/PageBackground'
 import ActivityFeed from '@/components/ActivityFeed'
@@ -125,6 +126,7 @@ export default function DashboardPage() {
     'compliance'
   ])
   const [showLayoutDrawer, setShowLayoutDrawer] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -132,6 +134,11 @@ export default function DashboardPage() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
+
+  // Fix hydration error by only rendering DndContext after mount
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     loadDashboardData()
@@ -160,11 +167,121 @@ export default function DashboardPage() {
     try {
       // Only load user profile (keep real)
       const profileRes = await fetch('/api/profile')
+      
+      if (!profileRes.ok) {
+        let errorData
+        try {
+          const text = await profileRes.text()
+          errorData = text ? JSON.parse(text) : { error: 'Unknown error', status: profileRes.status }
+        } catch (e) {
+          errorData = { error: 'Failed to parse error response', status: profileRes.status, raw: e }
+        }
+        console.error('[Dashboard] Profile API error:', profileRes.status, errorData)
+        
+        // If profile doesn't exist, try to get user from auth
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (authUser) {
+          console.log('[Dashboard] Using auth user as fallback:', authUser)
+          const fallbackUser = {
+            id: authUser.id,
+            email: authUser.email,
+            name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+            display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+          }
+          setUser(fallbackUser)
+          
+          // Hardcoded demo data (user is first, then 7 employees)
+          const userName = fallbackUser.display_name || fallbackUser.name || fallbackUser.email?.split('@')[0] || 'User'
+          const hardcodedTeamMembers: TeamMember[] = [
+            { id: 'user-1', name: userName, avatar_url: null },
+            { id: '2', name: 'John', avatar_url: null },
+            { id: '3', name: 'Chris', avatar_url: null },
+            { id: '4', name: 'David', avatar_url: null },
+            { id: '5', name: 'Maria', avatar_url: null },
+            { id: '6', name: 'Raj', avatar_url: null },
+            { id: '7', name: 'Priya', avatar_url: null },
+            { id: '8', name: 'Alex', avatar_url: null },
+          ]
+          
+          const connectedIntegrations = ['gmail', 'slack', 'notion', 'github', 'stripe']
+          
+          setStats({
+            networkConnections: 621,
+            networkTrend: 100,
+            teamMembers: hardcodedTeamMembers,
+            teamCount: 8,
+            activeTools: 5,
+            connectedIntegrations: connectedIntegrations,
+            totalRaised: 6500,
+            fundingStage: 'Pre-Seed',
+            marketingReach: 0,
+            engagementRate: 0,
+            weeklyGrowth: 0
+          })
+          return
+        }
+        throw new Error(errorData.error || 'Failed to load profile')
+      }
+      
       const profileData = await profileRes.json()
+      console.log('[Dashboard] Profile data:', profileData)
+      console.log('[Dashboard] display_name:', profileData.display_name)
+      console.log('[Dashboard] name:', profileData.name)
+      
+      // If profileData has an error property, it means the API returned an error
+      if (profileData.error) {
+        console.error('[Dashboard] Profile API returned error:', profileData.error)
+        // Use fallback logic
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (authUser) {
+          const fallbackUser = {
+            id: authUser.id,
+            email: authUser.email,
+            name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+            display_name: authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User',
+          }
+          setUser(fallbackUser)
+          const userName = fallbackUser.display_name || fallbackUser.name || fallbackUser.email?.split('@')[0] || 'User'
+          // Continue with fallback user setup...
+          const hardcodedTeamMembers: TeamMember[] = [
+            { id: 'user-1', name: userName, avatar_url: null },
+            { id: '2', name: 'John', avatar_url: null },
+            { id: '3', name: 'Chris', avatar_url: null },
+            { id: '4', name: 'David', avatar_url: null },
+            { id: '5', name: 'Maria', avatar_url: null },
+            { id: '6', name: 'Raj', avatar_url: null },
+            { id: '7', name: 'Priya', avatar_url: null },
+            { id: '8', name: 'Alex', avatar_url: null },
+          ]
+          const connectedIntegrations = ['gmail', 'slack', 'notion', 'github', 'stripe']
+          setStats({
+            networkConnections: 621,
+            networkTrend: 100,
+            teamMembers: hardcodedTeamMembers,
+            teamCount: 8,
+            activeTools: 5,
+            connectedIntegrations: connectedIntegrations,
+            totalRaised: 6500,
+            fundingStage: 'Pre-Seed',
+            marketingReach: 0,
+            engagementRate: 0,
+            weeklyGrowth: 0
+          })
+          return
+        }
+      }
+      
+      // Ensure display_name is set even if API didn't return it
+      if (profileData && !profileData.display_name && profileData.name) {
+        profileData.display_name = profileData.name
+      }
+      
       setUser(profileData)
 
       // Hardcoded demo data (user is first, then 7 employees)
-      const userName = profileData.name || profileData.email?.split('@')[0] || 'User'
+      const userName = profileData.display_name || profileData.name || profileData.email?.split('@')[0] || 'User'
+      console.log('[Dashboard] Computed userName:', userName)
+      console.log('[Dashboard] Final profileData:', profileData)
       const hardcodedTeamMembers: TeamMember[] = [
         { id: 'user-1', name: userName, avatar_url: profileData.avatar_url || null },
         { id: '2', name: 'John', avatar_url: null },
@@ -667,7 +784,22 @@ export default function DashboardPage() {
     ),
   }
 
-  const userName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'User'
+  // Get user's first name for greeting - prioritize display_name, then name, then email
+  const userName = user?.display_name 
+    ? user.display_name.split(' ')[0] 
+    : user?.name 
+    ? user.name.split(' ')[0]
+    : user?.email?.split('@')[0] || 'User'
+  
+  // Debug logging in useEffect to avoid render issues
+  useEffect(() => {
+    if (user) {
+      console.log('[Dashboard] user object:', user)
+      console.log('[Dashboard] display_name:', user.display_name)
+      console.log('[Dashboard] name:', user.name)
+      console.log('[Dashboard] computed userName:', userName)
+    }
+  }, [user, userName])
 
   const gridColsClass = {
     2: 'grid-cols-2',
@@ -791,39 +923,61 @@ export default function DashboardPage() {
           <SlackNotificationPopup />
 
           {/* All Draggable Cards (including KPIs) */}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={cards} strategy={rectSortingStrategy}>
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className={`grid ${gridColsClass} gap-4`}
-              >
-                {cards.map((cardId, index) => (
-                  <motion.div
-                    key={cardId}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: index * 0.1 }}
-                  >
-                    <SortableCard id={cardId}>
-                      <motion.div
-                        whileHover={{ scale: 1.01 }}
-                        transition={{ duration: 0.2 }}
-                        className="h-full"
-                      >
-                        {cardComponents[cardId]}
-                      </motion.div>
-                    </SortableCard>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </SortableContext>
-          </DndContext>
+          {mounted ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={cards} strategy={rectSortingStrategy}>
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className={`grid ${gridColsClass} gap-4`}
+                >
+                  {cards.map((cardId, index) => (
+                    <motion.div
+                      key={cardId}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: index * 0.1 }}
+                    >
+                      <SortableCard id={cardId}>
+                        <motion.div
+                          whileHover={{ scale: 1.01 }}
+                          transition={{ duration: 0.2 }}
+                          className="h-full"
+                        >
+                          {cardComponents[cardId]}
+                        </motion.div>
+                      </SortableCard>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className={`grid ${gridColsClass} gap-4`}
+            >
+              {cards.map((cardId, index) => (
+                <motion.div
+                  key={cardId}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                >
+                  <div className="h-full">
+                    {cardComponents[cardId]}
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
         </div>
       </PageBackground>
     </AppLayout>

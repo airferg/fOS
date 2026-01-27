@@ -184,6 +184,7 @@ function AuthCallbackContent() {
                 id: user.id,
                 email: user.email!,
                 name: userName,
+                display_name: userName, // Also set display_name
                 onboarding_complete: true, // Set to true to skip onboarding
               })
               .select()

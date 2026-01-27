@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { supabase } from '@/lib/supabase'
 import AppLayout from '@/components/AppLayout'
 import { PageBackground } from '@/components/PageBackground'
 import EquityAdjustmentModal from '@/components/EquityAdjustmentModal'
@@ -41,10 +42,44 @@ export default function TeamPage() {
       // Only load user profile (keep real)
       const profileRes = await fetch('/api/profile')
       const profileData = await profileRes.json()
+      
+      // Handle error response
+      if (profileData.error) {
+        console.error('[Team] Profile API error:', profileData.error)
+        // Use email as fallback
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        if (authUser) {
+          const fallbackName = authUser.user_metadata?.full_name || authUser.user_metadata?.name || authUser.email?.split('@')[0] || 'User'
+          setUser({
+            id: authUser.id,
+            email: authUser.email,
+            name: fallbackName,
+            display_name: fallbackName,
+          })
+          const userName = fallbackName
+          // Continue with setup using fallback...
+          const hardcodedTeamMembers: TeamMember[] = [
+            { id: 'user-1', name: userName, role: 'Founder', title: 'CEO', equity_percent: 65, vested_percent: 32.5, avatar_url: null, email: authUser.email || 'user@hydra.com' },
+            { id: '2', name: 'John', role: 'Employee', title: 'Lead Engineer', equity_percent: 5, vested_percent: 2.5, avatar_url: null, email: 'john@hydra.com' },
+            { id: '3', name: 'Chris', role: 'Employee', title: 'Product Manager', equity_percent: 3, vested_percent: 1.5, avatar_url: null, email: 'chris@hydra.com' },
+            { id: '4', name: 'David', role: 'Employee', title: 'Designer', equity_percent: 2.5, vested_percent: 1.25, avatar_url: null, email: 'david@hydra.com' },
+            { id: '5', name: 'Maria', role: 'Employee', title: 'Marketing Lead', equity_percent: 2.5, vested_percent: 1.25, avatar_url: null, email: 'maria@hydra.com' },
+            { id: '6', name: 'Raj', role: 'Employee', title: 'Engineer', equity_percent: 2, vested_percent: 1, avatar_url: null, email: 'raj@hydra.com' },
+            { id: '7', name: 'Priya', role: 'Employee', title: 'Operations', equity_percent: 2, vested_percent: 1, avatar_url: null, email: 'priya@hydra.com' },
+            { id: '8', name: 'Alex', role: 'Employee', title: 'CTO', equity_percent: 3, vested_percent: 1.5, avatar_url: null, email: 'alex@hydra.com' },
+          ]
+          const totalInvestorEquity = 15.0
+          setInvestorEquity(totalInvestorEquity)
+          setTeamMembers(hardcodedTeamMembers)
+          setLoading(false)
+          return
+        }
+      }
+      
       setUser(profileData)
 
       // Hardcoded demo team data (8 members - user is the only founder)
-      const userName = profileData.name || profileData.email?.split('@')[0] || 'User'
+      const userName = profileData.display_name || profileData.name || profileData.email?.split('@')[0] || 'User'
       const userEmail = profileData.email || 'user@hydra.com'
       
       const hardcodedTeamMembers: TeamMember[] = [
