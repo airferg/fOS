@@ -164,7 +164,7 @@ export default function DashboardPage() {
       setUser(profileData)
 
       // Hardcoded demo data (user is first, then 7 employees)
-      const userName = profileData.name || profileData.email?.split('@')[0] || 'You'
+      const userName = profileData.name || profileData.email?.split('@')[0] || 'User'
       const hardcodedTeamMembers: TeamMember[] = [
         { id: 'user-1', name: userName, avatar_url: profileData.avatar_url || null },
         { id: '2', name: 'John', avatar_url: null },
@@ -667,7 +667,7 @@ export default function DashboardPage() {
     ),
   }
 
-  const userName = user?.name?.split(' ')[0] || 'Kean'
+  const userName = user?.name?.split(' ')[0] || user?.email?.split('@')[0] || 'User'
 
   const gridColsClass = {
     2: 'grid-cols-2',

@@ -24,9 +24,77 @@ export default function ActivityFeed({ limit = 10 }: { limit?: number }) {
 
   const loadActivities = async () => {
     try {
-      const res = await fetch(`/api/activity?limit=${limit}`)
-      const data = await res.json()
-      setActivities(data.activities || [])
+      // Hardcoded activity data for MVP validation
+      const hardcodedActivities: Activity[] = [
+        {
+          id: '1',
+          activity_type: 'team_action',
+          title: 'John updated the product roadmap',
+          description: null,
+          actor_name: 'John',
+          actor_avatar_url: null,
+          icon: null,
+          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+          metadata: {}
+        },
+        {
+          id: '2',
+          activity_type: 'team_action',
+          title: 'Raj completed the compliance review',
+          description: null,
+          actor_name: 'Raj',
+          actor_avatar_url: null,
+          icon: null,
+          created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
+          metadata: {}
+        },
+        {
+          id: '3',
+          activity_type: 'email_received',
+          title: 'New email from investor',
+          description: 'Follow-up on funding discussion',
+          actor_name: null,
+          actor_avatar_url: null,
+          icon: null,
+          created_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
+          metadata: {}
+        },
+        {
+          id: '4',
+          activity_type: 'deadline_approaching',
+          title: 'Deadline for compliance report approaching',
+          description: 'Due in 3 days',
+          actor_name: null,
+          actor_avatar_url: null,
+          icon: null,
+          created_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+          metadata: {}
+        },
+        {
+          id: '5',
+          activity_type: 'team_action',
+          title: 'John scheduled a customer interview',
+          description: null,
+          actor_name: 'John',
+          actor_avatar_url: null,
+          icon: null,
+          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+          metadata: {}
+        },
+        {
+          id: '6',
+          activity_type: 'team_action',
+          title: 'Raj deployed new feature to production',
+          description: null,
+          actor_name: 'Raj',
+          actor_avatar_url: null,
+          icon: null,
+          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
+          metadata: {}
+        }
+      ]
+      
+      setActivities(hardcodedActivities.slice(0, limit))
     } catch (error) {
       console.error('Error loading activities:', error)
     } finally {
@@ -91,7 +159,11 @@ export default function ActivityFeed({ limit = 10 }: { limit?: number }) {
   if (activities.length === 0) {
     return (
       <div className="text-center py-8 text-zinc-500 dark:text-zinc-400">
-        <p className="text-2xl mb-2">📭</p>
+        <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+          <svg className="w-6 h-6 text-zinc-400 dark:text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
         <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">No recent activity</p>
       </div>
     )
