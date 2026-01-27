@@ -200,8 +200,7 @@ export default function LegalPage() {
           round_type: 'Pre-Seed',
           amount_raised: 6500,
           close_date: '2025-01-24',
-          status: 'closed',
-          lead_investor: 'Sequoia Capital'
+          status: 'closed'
         }
       ]
       setFundingRounds(hardcodedRounds)
@@ -215,25 +214,21 @@ export default function LegalPage() {
           firm: 'Sequoia Capital',
           investment_amount: 3000,
           equity_percent: 7.5,
-          round_name: 'Pre-Seed',
           funding_round_id: 'round-1',
           investor_type: 'vc',
           investment_date: '2025-01-24',
-          notes: 'Lead investor',
           is_lead: true
         },
         {
           id: 'inv-2',
           name: 'David Investor',
           email: 'david@example.com',
-          firm: null,
+          firm: undefined,
           investment_amount: 2000,
           equity_percent: 5.0,
-          round_name: 'Pre-Seed',
           funding_round_id: 'round-1',
           investor_type: 'angel',
           investment_date: '2025-01-24',
-          notes: null,
           is_lead: false
         },
         {
@@ -243,11 +238,9 @@ export default function LegalPage() {
           firm: 'California Angels',
           investment_amount: 1500,
           equity_percent: 2.5,
-          round_name: 'Pre-Seed',
           funding_round_id: 'round-1',
           investor_type: 'angel',
           investment_date: '2025-01-24',
-          notes: null,
           is_lead: false
         }
       ]
