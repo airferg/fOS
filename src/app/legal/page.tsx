@@ -165,16 +165,19 @@ export default function LegalPage() {
       const profileData = await profileRes.json()
       setUser(profileData)
 
-      // Hardcoded demo team data (8 members - matching team page)
+      // Hardcoded demo team data (8 members - user is the only founder)
+      const userName = profileData.name || profileData.email?.split('@')[0] || 'You'
+      const userEmail = profileData.email || 'user@hydra.com'
+      
       const hardcodedTeamMembers: TeamMember[] = [
-        { id: '1', name: 'Marcus', role: 'Founder', title: 'CEO', equity_percent: 25, vested_percent: 12.5, avatar_url: null, email: 'marcus@hydra.com' },
-        { id: '2', name: 'Kean', role: 'Founder', title: 'CTO', equity_percent: 25, vested_percent: 12.5, avatar_url: null, email: 'kean@hydra.com' },
-        { id: '3', name: 'John', role: 'Employee', title: 'Lead Engineer', equity_percent: 3, vested_percent: 1.5, avatar_url: null, email: 'john@hydra.com' },
-        { id: '4', name: 'Chris', role: 'Employee', title: 'Product Manager', equity_percent: 2, vested_percent: 1, avatar_url: null, email: 'chris@hydra.com' },
-        { id: '5', name: 'David', role: 'Employee', title: 'Designer', equity_percent: 1.5, vested_percent: 0.75, avatar_url: null, email: 'david@hydra.com' },
-        { id: '6', name: 'Maria', role: 'Employee', title: 'Marketing Lead', equity_percent: 1.5, vested_percent: 0.75, avatar_url: null, email: 'maria@hydra.com' },
-        { id: '7', name: 'Raj', role: 'Employee', title: 'Engineer', equity_percent: 1, vested_percent: 0.5, avatar_url: null, email: 'raj@hydra.com' },
-        { id: '8', name: 'Priya', role: 'Employee', title: 'Operations', equity_percent: 1, vested_percent: 0.5, avatar_url: null, email: 'priya@hydra.com' },
+        { id: 'user-1', name: userName, role: 'Founder', title: 'CEO', equity_percent: 50, email: userEmail, start_date: '2025-01-01' },
+        { id: '2', name: 'John', role: 'Employee', title: 'Lead Engineer', equity_percent: 5, email: 'john@hydra.com', start_date: '2025-02-01' },
+        { id: '3', name: 'Chris', role: 'Employee', title: 'Product Manager', equity_percent: 3, email: 'chris@hydra.com', start_date: '2025-02-15' },
+        { id: '4', name: 'David', role: 'Employee', title: 'Designer', equity_percent: 2.5, email: 'david@hydra.com', start_date: '2025-03-01' },
+        { id: '5', name: 'Maria', role: 'Employee', title: 'Marketing Lead', equity_percent: 2.5, email: 'maria@hydra.com', start_date: '2025-03-01' },
+        { id: '6', name: 'Raj', role: 'Employee', title: 'Engineer', equity_percent: 2, email: 'raj@hydra.com', start_date: '2025-03-15' },
+        { id: '7', name: 'Priya', role: 'Employee', title: 'Operations', equity_percent: 2, email: 'priya@hydra.com', start_date: '2025-03-15' },
+        { id: '8', name: 'Alex', role: 'Employee', title: 'CTO', equity_percent: 3, email: 'alex@hydra.com', start_date: '2025-02-01' },
       ]
       setTeam(hardcodedTeamMembers)
       

@@ -163,16 +163,17 @@ export default function DashboardPage() {
       const profileData = await profileRes.json()
       setUser(profileData)
 
-      // Hardcoded demo data
+      // Hardcoded demo data (user is first, then 7 employees)
+      const userName = profileData.name || profileData.email?.split('@')[0] || 'You'
       const hardcodedTeamMembers: TeamMember[] = [
-        { id: '1', name: 'Marcus', avatar_url: null },
-        { id: '2', name: 'Kean', avatar_url: null },
-        { id: '3', name: 'John', avatar_url: null },
-        { id: '4', name: 'Chris', avatar_url: null },
-        { id: '5', name: 'David', avatar_url: null },
-        { id: '6', name: 'Maria', avatar_url: null },
-        { id: '7', name: 'Raj', avatar_url: null },
-        { id: '8', name: 'Priya', avatar_url: null },
+        { id: 'user-1', name: userName, avatar_url: profileData.avatar_url || null },
+        { id: '2', name: 'John', avatar_url: null },
+        { id: '3', name: 'Chris', avatar_url: null },
+        { id: '4', name: 'David', avatar_url: null },
+        { id: '5', name: 'Maria', avatar_url: null },
+        { id: '6', name: 'Raj', avatar_url: null },
+        { id: '7', name: 'Priya', avatar_url: null },
+        { id: '8', name: 'Alex', avatar_url: null },
       ]
 
       const connectedIntegrations = ['gmail', 'slack', 'notion', 'github', 'stripe']

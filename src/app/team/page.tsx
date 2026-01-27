@@ -31,94 +31,10 @@ export default function TeamPage() {
     loadTeam()
   }, [])
 
-  const recalculateEquity = async () => {
-    try {
-      console.log('[Team Page] Triggering equity recalculation...')
-      const res = await fetch('/api/equity/recalculate', {
-        method: 'POST'
-      })
-      
-      if (res.ok) {
-        const data = await res.json()
-        console.log('[Team Page] Recalculation successful:', data)
-        
-        // Force a complete reload of all data with cache busting
-        setLoading(true)
-        
-        // Add timestamp to bust cache
-        const timestamp = Date.now()
-        
-        // Fetch fresh team data (no cache)
-        const teamRes = await fetch(`/api/team?t=${timestamp}`, {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache'
-          }
-        })
-        const teamData = await teamRes.json()
-        const freshTeamMembers = teamData.teamMembers || []
-        console.log('[Team Page] Fresh team members:', freshTeamMembers.map((m: any) => ({ name: m.name, equity: m.equity_percent })))
-        
-        // Fetch fresh investor data (no cache)
-        const investorsRes = await fetch(`/api/investors?t=${timestamp}`, {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache'
-          }
-        }).catch(() => ({ json: () => ({ investors: [] }) }))
-        const investorsData = await investorsRes.json()
-        const allInvestors = investorsData.investors || []
-        
-        // Filter to only valid investors (API should already do this, but double-check)
-        const freshInvestors = allInvestors.filter((inv: any) => {
-          return inv.funding_round_id !== null && inv.funding_round_id !== undefined
-        })
-        
-        console.log('[Team Page] Fresh investors:', freshInvestors.length, 'valid out of', allInvestors.length, 'total')
-        
-        // Calculate fresh investor equity from valid investors only
-        const freshInvestorEquity = freshInvestors.reduce((sum: number, inv: any) => {
-          return sum + (Number(inv.equity_percent) || 0)
-        }, 0)
-        
-        console.log('[Team Page] Fresh totals - Team:', freshTeamMembers.reduce((s: number, m: any) => s + (Number(m.equity_percent) || 0), 0), 'Investors:', freshInvestorEquity)
-        
-        // Update all state at once
-        setTeamMembers([...freshTeamMembers]) // Create new array to force re-render
-        setInvestorEquity(freshInvestorEquity)
-        setRefreshKey(prev => prev + 1) // Force component re-render
-        
-        // Small delay to ensure state updates before setting loading to false
-        await new Promise(resolve => setTimeout(resolve, 100))
-        setLoading(false)
-        
-        console.log('[Team Page] State updated - Team members:', freshTeamMembers.length, 'Investor equity:', freshInvestorEquity)
-        console.log('[Team Page] Team member equity:', freshTeamMembers.map((m: any) => `${m.name}: ${m.equity_percent}%`))
-      } else {
-        const error = await res.json()
-        console.error('[Team Page] Recalculation failed:', error)
-        alert(`Failed to recalculate equity: ${error.error || 'Unknown error'}`)
-        setLoading(false)
-      }
-    } catch (error: any) {
-      console.error('[Team Page] Error recalculating equity:', error)
-      alert(`Error recalculating equity: ${error.message || 'Unknown error'}`)
-      setLoading(false)
-    }
-  }
+  // NOTE: recalculateEquity removed - all data is hardcoded for MVP
 
-  // Recalculate equity once after initial load
-  const [hasRecalculated, setHasRecalculated] = useState(false)
-  useEffect(() => {
-    if (!loading && teamMembers.length > 0 && !hasRecalculated) {
-      // Only recalculate once on mount
-      const timer = setTimeout(() => {
-        recalculateEquity()
-        setHasRecalculated(true)
-      }, 500) // Small delay to ensure all data is loaded
-      return () => clearTimeout(timer)
-    }
-  }, [loading]) // Only depend on loading to avoid loops
+  // NOTE: Removed automatic equity recalculation to prevent database calls
+  // All data is now hardcoded for MVP validation
 
   const loadTeam = async () => {
     try {
@@ -127,16 +43,19 @@ export default function TeamPage() {
       const profileData = await profileRes.json()
       setUser(profileData)
 
-      // Hardcoded demo team data (8 members)
+      // Hardcoded demo team data (8 members - user is the only founder)
+      const userName = profileData.name || profileData.email?.split('@')[0] || 'You'
+      const userEmail = profileData.email || 'user@hydra.com'
+      
       const hardcodedTeamMembers: TeamMember[] = [
-        { id: '1', name: 'Marcus', role: 'Founder', title: 'CEO', equity_percent: 25, vested_percent: 12.5, avatar_url: null, email: 'marcus@hydra.com' },
-        { id: '2', name: 'Kean', role: 'Founder', title: 'CTO', equity_percent: 25, vested_percent: 12.5, avatar_url: null, email: 'kean@hydra.com' },
-        { id: '3', name: 'John', role: 'Employee', title: 'Lead Engineer', equity_percent: 3, vested_percent: 1.5, avatar_url: null, email: 'john@hydra.com' },
-        { id: '4', name: 'Chris', role: 'Employee', title: 'Product Manager', equity_percent: 2, vested_percent: 1, avatar_url: null, email: 'chris@hydra.com' },
-        { id: '5', name: 'David', role: 'Employee', title: 'Designer', equity_percent: 1.5, vested_percent: 0.75, avatar_url: null, email: 'david@hydra.com' },
-        { id: '6', name: 'Maria', role: 'Employee', title: 'Marketing Lead', equity_percent: 1.5, vested_percent: 0.75, avatar_url: null, email: 'maria@hydra.com' },
-        { id: '7', name: 'Raj', role: 'Employee', title: 'Engineer', equity_percent: 1, vested_percent: 0.5, avatar_url: null, email: 'raj@hydra.com' },
-        { id: '8', name: 'Priya', role: 'Employee', title: 'Operations', equity_percent: 1, vested_percent: 0.5, avatar_url: null, email: 'priya@hydra.com' },
+        { id: 'user-1', name: userName, role: 'Founder', title: 'CEO', equity_percent: 65, vested_percent: 32.5, avatar_url: profileData.avatar_url || null, email: userEmail },
+        { id: '2', name: 'John', role: 'Employee', title: 'Lead Engineer', equity_percent: 5, vested_percent: 2.5, avatar_url: null, email: 'john@hydra.com' },
+        { id: '3', name: 'Chris', role: 'Employee', title: 'Product Manager', equity_percent: 3, vested_percent: 1.5, avatar_url: null, email: 'chris@hydra.com' },
+        { id: '4', name: 'David', role: 'Employee', title: 'Designer', equity_percent: 2.5, vested_percent: 1.25, avatar_url: null, email: 'david@hydra.com' },
+        { id: '5', name: 'Maria', role: 'Employee', title: 'Marketing Lead', equity_percent: 2.5, vested_percent: 1.25, avatar_url: null, email: 'maria@hydra.com' },
+        { id: '6', name: 'Raj', role: 'Employee', title: 'Engineer', equity_percent: 2, vested_percent: 1, avatar_url: null, email: 'raj@hydra.com' },
+        { id: '7', name: 'Priya', role: 'Employee', title: 'Operations', equity_percent: 2, vested_percent: 1, avatar_url: null, email: 'priya@hydra.com' },
+        { id: '8', name: 'Alex', role: 'Employee', title: 'CTO', equity_percent: 3, vested_percent: 1.5, avatar_url: null, email: 'alex@hydra.com' },
       ]
 
       // Hardcoded investor equity (from $6.5K Pre-Seed round)
@@ -195,46 +114,27 @@ export default function TeamPage() {
   }, [teamMembers, investorEquity, loading, refreshKey, founderEquity, totalAllocated, totalEquity])
 
   const handleEquityUpdate = async (memberId: string, updates: Partial<TeamMember>) => {
-    try {
-      const res = await fetch('/api/team', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberId, ...updates })
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        
-        // Update local state and reload to get fresh data
-        setTeamMembers(prev =>
-          prev.map(m => m.id === memberId ? { ...m, ...updates } : m)
-        )
-        loadTeam() // Reload to get updated data including vesting schedules
-      } else {
-        const error = await res.json()
-        throw new Error(error.error || 'Failed to update team member')
-      }
-    } catch (error: any) {
-      console.error('Error updating team member:', error)
-      alert(error.message || 'Failed to update team member')
-    }
+    // For MVP: Just update local state (hardcoded data)
+    setTeamMembers(prev =>
+      prev.map(m => m.id === memberId ? { ...m, ...updates } : m)
+    )
+    // NOTE: No API call - all data is hardcoded for MVP validation
   }
 
   const handleAddMember = async (memberData: any) => {
-    const res = await fetch('/api/team', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(memberData)
-    })
-
-    if (!res.ok) {
-      const error = await res.json()
-      throw new Error(error.error || 'Failed to add team member')
+    // For MVP: Just update local state (hardcoded data)
+    const newMember: TeamMember = {
+      id: `temp-${Date.now()}`,
+      name: memberData.name || 'New Member',
+      role: memberData.role || 'Employee',
+      title: memberData.title || '',
+      equity_percent: memberData.equity_percent || 0,
+      vested_percent: 0,
+      avatar_url: null,
+      email: memberData.email || null
     }
-
-    const data = await res.json()
-    setTeamMembers(prev => [...prev, data.teamMember])
-    loadTeam() // Reload to get full data
+    setTeamMembers(prev => [...prev, newMember])
+    // NOTE: No API call - all data is hardcoded for MVP validation
   }
 
   const handleDeleteMember = async (memberId: string) => {
@@ -242,26 +142,12 @@ export default function TeamPage() {
       return
     }
 
-    try {
-      const res = await fetch(`/api/team?memberId=${memberId}`, {
-        method: 'DELETE',
-      })
-
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Failed to remove team member')
-      }
-
-      // Remove from local state
-      setTeamMembers(prev => prev.filter(m => m.id !== memberId))
-      if (selectedMember?.id === memberId) {
-        setSelectedMember(null)
-      }
-      loadTeam() // Reload to refresh data
-    } catch (error: any) {
-      console.error('Error deleting team member:', error)
-      alert(error.message || 'Failed to remove team member')
+    // For MVP: Just update local state (hardcoded data)
+    setTeamMembers(prev => prev.filter(m => m.id !== memberId))
+    if (selectedMember?.id === memberId) {
+      setSelectedMember(null)
     }
+    // NOTE: No API call - all data is hardcoded for MVP validation
   }
 
 
