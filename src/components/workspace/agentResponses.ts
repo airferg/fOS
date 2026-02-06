@@ -209,8 +209,8 @@ Your legal tasks report has been shared and a meeting has been scheduled.`,
 - [x] Review the deck in Drive (v3-draft) and approve or edit.
 - [x] Share with Acme Ventures before your follow-up on 2026-02-07.
 - [x] Add a short "runway update" to your monthly investor email.`,
-  },
     stepDelayMs: 1000,
+  },
 
   'signal-sig-4': {
     steps: [
