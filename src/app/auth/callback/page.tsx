@@ -165,7 +165,6 @@ function AuthCallbackContent() {
             const { data: { session: verifySession } } = await supabase.auth.getSession()
             console.log('[OAuth Callback Client] Session verification:', { hasSession: !!verifySession })
             
-            // Always redirect to dashboard (skip onboarding)
             console.log('[OAuth Callback Client] Redirecting to dashboard...')
             window.location.href = '/dashboard'
             return

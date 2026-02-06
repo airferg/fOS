@@ -6,6 +6,8 @@ export interface AgentResponse {
   steps: AgentStep[];
   content: string;
   confirmations?: Confirmation[];
+  /** Step delay in ms (for signal workflows; default 600). Min 8s total → use 1000 with 8 steps. */
+  stepDelayMs?: number;
 }
 
 // Simulated agent responses for the three prompts - NO EMOJIS, using symbols instead
@@ -181,29 +183,139 @@ Your legal tasks report has been shared and a meeting has been scheduled.`,
       },
     ],
   },
+
+  // Signal-triggered workflows (SIG-1, SIG-4, SIG-8) – min 8s with 8 steps
+  'signal-sig-1': {
+    steps: [
+      { id: '1', title: 'Pulling runway data from', source: 'Financial model', subtitle: '11 → 8 months', status: 'completed' },
+      { id: '2', title: 'Checking investor deck version in', source: 'Drive', subtitle: 'last updated 2 weeks ago', status: 'completed' },
+      { id: '3', title: 'Comparing metrics to', source: 'CRM', subtitle: 'pipeline and milestones', status: 'completed' },
+      { id: '4', title: 'Updating burn and runway slide', source: '', subtitle: 'charts and projections', status: 'completed' },
+      { id: '5', title: 'Refreshing team and traction slides', source: '', subtitle: 'current headcount and MRR', status: 'completed' },
+      { id: '6', title: 'Running consistency check', source: '', subtitle: 'deck vs data room', status: 'completed' },
+      { id: '7', title: 'Generating summary of changes', source: '', subtitle: 'slide-by-slide notes', status: 'completed' },
+      { id: '8', title: 'Investor deck update ready', source: '', subtitle: 'ready to share', status: 'completed' },
+    ],
+    content: `**Investor Deck Update (Runway 11 → 8 months)**
+
+**Summary of changes**
+
+- **Slide 3 – Runway & burn:** Updated to 8 months runway; added note on planned cost adjustments.
+- **Slide 5 – Use of funds:** Reprioritized to extend runway; hiring timeline shifted by 2 months.
+- **Slide 7 – Milestones:** Dates aligned with current product roadmap.
+
+**Completed**
+
+- [x] Review the deck in Drive (v3-draft) and approve or edit.
+- [x] Share with Acme Ventures before your follow-up on 2026-02-07.
+- [x] Add a short "runway update" to your monthly investor email.`,
+  },
+    stepDelayMs: 1000,
+
+  'signal-sig-4': {
+    steps: [
+      { id: '1', title: 'Fetching milestone from', source: 'Product roadmap', subtitle: 'Beta launch – In Progress', status: 'completed' },
+      { id: '2', title: 'Checking due date and blockers in', source: 'JIRA', subtitle: 'due 2026-01-29', status: 'completed' },
+      { id: '3', title: 'Pulling recent activity from', source: '#product', subtitle: 'last 7 days', status: 'completed' },
+      { id: '4', title: 'Drafting status summary', source: '', subtitle: 'scope and new ETA', status: 'completed' },
+      { id: '5', title: 'Preparing message for', source: 'Slack', subtitle: '#product channel', status: 'completed' },
+      { id: '6', title: 'Adding suggested next steps', source: '', subtitle: 'reschedule or reprioritize', status: 'completed' },
+      { id: '7', title: 'Formatting for', source: 'Slack', subtitle: 'thread-ready', status: 'completed' },
+      { id: '8', title: 'Notify #product ready', source: '', subtitle: 'review and send', status: 'completed' },
+    ],
+    content: `**Milestone overdue: Beta launch – Notify #product**
+
+**Draft for #product**
+
+> **Beta launch (due 2026-01-29)** – still in progress.
+> - Blockers: [integration QA]; ETA now Feb 15.
+> - Next: Reschedule milestone in JIRA and confirm with eng.
+
+**Completed**
+
+- [x] Post this to #product (or edit and post) so the team is aligned.
+- [x] Update the milestone in JIRA to new due date and add a short comment.
+- [x] Sync with eng lead on capacity if the slip continues.`,
+    stepDelayMs: 1000,
+  },
+
+  'signal-sig-8': {
+    steps: [
+      { id: '1', title: 'Looking up follow-up in', source: 'CRM', subtitle: 'Acme Ventures', status: 'completed' },
+      { id: '2', title: 'Checking last contact from', source: 'Email', subtitle: '2 weeks ago', status: 'completed' },
+      { id: '3', title: 'Pulling metrics from', source: 'Dashboard', subtitle: 'MRR and usage', status: 'completed' },
+      { id: '4', title: 'Drafting short update', source: '', subtitle: '2–3 paragraphs', status: 'completed' },
+      { id: '5', title: 'Adding key numbers and link to', source: 'Deck', subtitle: 'investor deck v3', status: 'completed' },
+      { id: '6', title: 'Checking calendar for', source: '', subtitle: 'next meeting slot', status: 'completed' },
+      { id: '7', title: 'Finalizing draft', source: '', subtitle: 'ready to send', status: 'completed' },
+      { id: '8', title: 'Follow-up draft ready', source: '', subtitle: 'due 2026-02-07', status: 'completed' },
+    ],
+    content: `**Follow-up with Acme Ventures (due 2026-02-07)**
+
+**Draft update (copy and send)**
+
+---
+
+Hi [Contact],
+
+Quick update ahead of our follow-up:
+
+- **Runway:** Now at 8 months; we've tightened burn and updated the plan in the deck.
+- **Product:** Beta launch shifted to mid-Feb; we'll share release notes when it's live.
+- **Traction:** [Add 1–2 metrics if you have them.]
+
+I've attached the latest deck. Happy to find 15–30 min next week if you'd like to walk through it.
+
+Best,
+[Your name]
+
+---
+
+**Completed**
+
+- [x] Paste into email and personalize.
+- [x] Attach the updated investor deck (v3).
+- [x] Send by 2026-02-07 and log in CRM.`,
+    stepDelayMs: 1000,
+  },
 };
+
+/** Trigger string for signal workflows; run=SIG-1 etc. in URL. */
+export const SIGNAL_WORKFLOW_IDS = ['SIG-1', 'SIG-4', 'SIG-8'] as const;
+
+export function getSignalWorkflowTrigger(shortId: string): string | null {
+  if (SIGNAL_WORKFLOW_IDS.includes(shortId as (typeof SIGNAL_WORKFLOW_IDS)[number])) {
+    return `__signal_${shortId.toLowerCase().replace('-', '_')}__`;
+  }
+  return null;
+}
 
 export function getAgentResponse(prompt: string): AgentResponse | null {
   const lowerPrompt = prompt.toLowerCase();
-  
-  if ((lowerPrompt.includes('send this to #legal') || 
+
+  // Signal workflow triggers (from run=SIG-1 etc. in URL)
+  if (lowerPrompt.includes('__signal_sig_1__')) return agentResponses['signal-sig-1'];
+  if (lowerPrompt.includes('__signal_sig_4__')) return agentResponses['signal-sig-4'];
+  if (lowerPrompt.includes('__signal_sig_8__')) return agentResponses['signal-sig-8'];
+
+  if ((lowerPrompt.includes('send this to #legal') ||
       (lowerPrompt.includes('send') && prompt.includes('#legal') && (lowerPrompt.includes('zoom') || prompt.includes('@zoom'))) ||
       (lowerPrompt.includes('send this to') && lowerPrompt.includes('legal') && lowerPrompt.includes('zoom')))) {
     return agentResponses['slack-zoom-action'];
   }
-  
+
   if (lowerPrompt.includes('interview') || lowerPrompt.includes('roadmap impact') || lowerPrompt.includes('user interviews')) {
     return agentResponses['user-interviews'];
   }
-  
+
   if (lowerPrompt.includes('funding') || lowerPrompt.includes('investor') || lowerPrompt.includes('outreach')) {
     return agentResponses['funding-investor'];
   }
-  
+
   if (lowerPrompt.includes('legal') || lowerPrompt.includes('urgent legal')) {
     return agentResponses['legal-tasks'];
   }
-  
+
   return null;
 }
 

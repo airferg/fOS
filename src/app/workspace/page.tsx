@@ -1,21 +1,59 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppLayout from '@/components/AppLayout';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ChatMessage, ChatMessageProps, AgentStep, Confirmation } from '@/components/workspace/ChatMessage';
+import { ChatMessage, ChatMessageProps, AgentStep } from '@/components/workspace/ChatMessage';
 import { ChatInput } from '@/components/workspace/ChatInput';
-import { getAgentResponse, defaultSuggestions } from '@/components/workspace/agentResponses';
+import { getAgentResponse, getSignalWorkflowTrigger, defaultSuggestions } from '@/components/workspace/agentResponses';
+import { WorkspaceSignalsList } from '@/components/signals';
 
 interface Message extends ChatMessageProps {
   id: string;
 }
 
-export default function WorkspacePage() {
+type WorkspaceView = 'chat' | 'signals';
+
+function WorkspaceContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const hasRunSignalRef = useRef(false);
+
+  // Page toggle: Chat | Signals. Default from ?view=signals
+  const viewFromUrl = searchParams.get('view') === 'signals' ? 'signals' : 'chat';
+  const [view, setView] = useState<WorkspaceView>(viewFromUrl);
+
+  useEffect(() => {
+    if (searchParams.get('view') === 'signals') setView('signals');
+  }, [searchParams]);
+
+  // When run=SIG-1|SIG-4|SIG-8, switch to chat and run that signal's workflow (min 8s)
+  useEffect(() => {
+    const run = searchParams.get('run');
+    if (!run || !['SIG-1', 'SIG-4', 'SIG-8'].includes(run) || hasRunSignalRef.current) return;
+    const trigger = getSignalWorkflowTrigger(run);
+    if (!trigger) return;
+    hasRunSignalRef.current = true;
+    setView('chat');
+    const userLabel = run === 'SIG-1' ? 'Update investor deck' : run === 'SIG-4' ? 'Notify #product' : 'Send update';
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: userLabel,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setTimeout(() => {
+      simulateAgentResponse(trigger).then(() => {
+        router.replace('/workspace?view=chat', { scroll: false });
+      });
+    }, 0);
+  }, [searchParams]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -26,20 +64,20 @@ export default function WorkspacePage() {
 
   const simulateAgentResponse = async (userMessage: string) => {
     setIsLoading(true);
-    
+
     // Simulate typing delay
     await new Promise(resolve => setTimeout(resolve, 1200));
-    
+
     const response = getAgentResponse(userMessage);
-    
+    const stepDelayMs = response?.stepDelayMs ?? 600;
+
     if (response) {
-      // Add steps progressively
+      // Add steps progressively (stepDelayMs for signal workflows ≥ 8s total)
       const stepsToShow: AgentStep[] = [];
-      
+
       for (let i = 0; i < response.steps.length; i++) {
         stepsToShow.push({ ...response.steps[i], status: 'running' });
-        
-        // Update message with current steps
+
         setMessages(prev => {
           const newMessages = [...prev];
           const lastMsg = newMessages[newMessages.length - 1];
@@ -64,10 +102,10 @@ export default function WorkspacePage() {
           }
           return newMessages;
         });
-        
-        await new Promise(resolve => setTimeout(resolve, 600));
+
+        await new Promise(resolve => setTimeout(resolve, stepDelayMs));
       }
-      
+
       // Mark all steps complete and add content
       await new Promise(resolve => setTimeout(resolve, 600));
       
@@ -125,14 +163,46 @@ export default function WorkspacePage() {
   return (
     <AppLayout>
       <div className="h-[calc(100vh-4rem)] flex flex-col relative overflow-hidden">
-        {/* Subtle grid background */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none dark:bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)]" />
-        
-        {/* Gradient orb accent */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-orange-500/5 rounded-full blur-[120px] pointer-events-none" />
-        
-        {/* Chat messages area */}
-        <div className="flex-1 overflow-hidden relative">
+        {/* Page toggle: Signals | Chat */}
+        <div className="flex items-center gap-1 px-4 py-2 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shrink-0">
+          <button
+            type="button"
+            onClick={() => setView('signals')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              view === 'signals'
+                ? 'bg-zinc-900 dark:bg-zinc-800 text-white dark:text-white'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+            }`}
+          >
+            Signals
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('chat')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              view === 'chat'
+                ? 'bg-zinc-900 dark:bg-zinc-800 text-white dark:text-white'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+            }`}
+          >
+            Chat
+          </button>
+        </div>
+
+        {/* Signals list (full list, dark theme) */}
+        {view === 'signals' && (
+          <div className="flex-1 min-h-0">
+            <WorkspaceSignalsList />
+          </div>
+        )}
+
+        {/* Chat view */}
+        {view === 'chat' && (
+          <>
+            {/* Subtle grid background */}
+            <div className="absolute inset-0 top-[52px] bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px] pointer-events-none dark:bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)]" />
+            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-orange-500/5 rounded-full blur-[120px] pointer-events-none" />
+            <div className="flex-1 overflow-hidden relative min-h-0">
           <ScrollArea className="h-full" ref={scrollRef}>
             <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
               <AnimatePresence>
@@ -210,27 +280,37 @@ export default function WorkspacePage() {
             </div>
           </ScrollArea>
           
-          {/* Gradient fade at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white dark:from-zinc-950 via-white/80 dark:via-zinc-950/80 to-transparent pointer-events-none" />
-        </div>
+              {/* Gradient fade at bottom */}
+              <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white dark:from-zinc-950 via-white/80 dark:via-zinc-950/80 to-transparent pointer-events-none" />
+            </div>
 
-        {/* Input area - fixed at bottom */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="relative z-10 border-t border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/60 backdrop-blur-xl"
-        >
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <ChatInput
-              onSend={handleSend}
-              isLoading={isLoading}
-              suggestions={showSuggestions ? defaultSuggestions : []}
-              placeholder="Ask me anything about your startup..."
-            />
-          </div>
-        </motion.div>
+            {/* Input area - fixed at bottom */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="relative z-10 border-t border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-950/60 backdrop-blur-xl shrink-0"
+            >
+              <div className="max-w-4xl mx-auto px-4 py-4">
+                <ChatInput
+                  onSend={handleSend}
+                  isLoading={isLoading}
+                  suggestions={showSuggestions ? defaultSuggestions : []}
+                  placeholder="Ask me anything about your startup..."
+                />
+              </div>
+            </motion.div>
+          </>
+        )}
       </div>
     </AppLayout>
+  );
+}
+
+export default function WorkspacePage() {
+  return (
+    <Suspense fallback={<AppLayout><div className="h-[calc(100vh-4rem)] flex items-center justify-center text-zinc-500">Loading...</div></AppLayout>}>
+      <WorkspaceContent />
+    </Suspense>
   );
 }

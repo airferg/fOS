@@ -106,18 +106,6 @@ export default function AppLayout({ children, user }: AppLayoutProps) {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-zinc-950">
-        {/* Test/Concept Indicator Banner */}
-        <div className="bg-orange-50 dark:bg-orange-950/20 border-b border-orange-200 dark:border-orange-800/50 px-4 py-2">
-          <div className="flex items-center justify-center gap-2 text-xs text-orange-800 dark:text-orange-300">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="font-medium">Test Version</span>
-            <span className="text-orange-600 dark:text-orange-400">•</span>
-            <span>This is a concept demo with hardcoded data. Please do not expect functionality.</span>
-          </div>
-        </div>
-        
         {/* Page Content */}
         <main className="flex-1 overflow-auto">{children}</main>
       </div>

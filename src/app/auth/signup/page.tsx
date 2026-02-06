@@ -41,7 +41,7 @@ export default function SignupPage() {
       if (data.user) {
         // Check if email confirmation is required
         if (data.session) {
-          // User is logged in, redirect to dashboard (skip onboarding)
+          // User is logged in, redirect to dashboard
           router.push('/dashboard')
           router.refresh()
         } else {

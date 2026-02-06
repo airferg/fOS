@@ -118,19 +118,11 @@ export async function GET(req: NextRequest) {
         console.log('[OAuth Callback] User profile created successfully')
       }
 
-      return NextResponse.redirect(new URL('/onboarding', req.url))
-    }
-
-    console.log('[OAuth Callback] User profile exists. Onboarding complete:', profile.onboarding_complete)
-
-    // Redirect based on onboarding status
-    if (profile.onboarding_complete) {
-      console.log('[OAuth Callback] Redirecting to dashboard')
       return NextResponse.redirect(new URL('/dashboard', req.url))
-    } else {
-      console.log('[OAuth Callback] Redirecting to onboarding')
-      return NextResponse.redirect(new URL('/onboarding', req.url))
     }
+
+    console.log('[OAuth Callback] User profile exists. Redirecting to dashboard')
+    return NextResponse.redirect(new URL('/dashboard', req.url))
   } catch (err: any) {
     console.error('[OAuth Callback] Unexpected error:', err)
     return NextResponse.redirect(new URL(`/auth/login?error=${encodeURIComponent(err.message || 'unexpected_error')}`, req.url))

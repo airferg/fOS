@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
@@ -27,6 +27,10 @@ import {
   useSortable,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { runRules } from '@/lib/signals/engine'
+import { mockOperatingState } from '@/lib/signals/mockState'
+import type { Signal } from '@/lib/signals/types'
+import { SignalsPanel } from '@/components/signals'
 
 interface TeamMember {
   id: string
@@ -127,6 +131,9 @@ export default function DashboardPage() {
   ])
   const [showLayoutDrawer, setShowLayoutDrawer] = useState(false)
   const [mounted, setMounted] = useState(false)
+  // Hydra Signals: rule-based insights (no popup modals)
+  const [signals, setSignals] = useState<Signal[]>([])
+  const signalsPanelRef = useRef<HTMLDivElement>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -138,6 +145,13 @@ export default function DashboardPage() {
   // Fix hydration error by only rendering DndContext after mount
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  // Hydra Signals: run rules on mock state
+  useEffect(() => {
+    const state = mockOperatingState
+    const nextSignals = runRules(state)
+    setSignals(nextSignals)
   }, [])
 
   useEffect(() => {
@@ -919,6 +933,18 @@ export default function DashboardPage() {
           </div>
           </motion.div>
 
+          {/* Hydra Signals: hero line (bold) + panel */}
+          {signals.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.15 }}
+              className="mb-6"
+            >
+              <SignalsPanel signals={signals} panelRef={signalsPanelRef} />
+            </motion.div>
+          )}
+
           {/* Slack Notification Popup */}
           <SlackNotificationPopup />
 
@@ -979,6 +1005,7 @@ export default function DashboardPage() {
             </motion.div>
           )}
         </div>
+
       </PageBackground>
     </AppLayout>
   )
